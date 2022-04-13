@@ -1,2 +1,2 @@
 # GRACE
-Research internship project in cryptography on Private Iformation Retrieval
+Research internship project in cryptography on Private Information Retrieval
