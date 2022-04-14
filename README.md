@@ -10,9 +10,11 @@ F. Wang, C. Yun, S. Goldwasser, V. Vaikuntanathan and M. Zaharia (2017). Splinte
 
 E. Boyle, N. Gilboa and Y. Ishai (2015). Function Secret Sharing. In: Oswald, E., Fischlin, M. (eds) Advances in Cryptology - EUROCRYPT 2015. EUROCRYPT 2015. Lecture Notes in Computer Science(), vol 9057. Springer, Berlin, Heidelberg. https://doi.org/10.1007/978-3-662-46803-6_12
 
+E. Boyle, N. Gilboa, and Y. Ishai (2016). Function Secret Sharing: Improvements and Extensions. In Proceedings of the 2016 ACM SIGSAC Conference on Computer and Communications Security (CCS '16). Association for Computing Machinery, New York, NY, USA, 1292–1303. https://doi.org/10.1145/2976749.2978429
+
 ### Reading
 
-E. Boyle, N. Gilboa, and Y. Ishai (2016). Function Secret Sharing: Improvements and Extensions. In Proceedings of the 2016 ACM SIGSAC Conference on Computer and Communications Security (CCS '16). Association for Computing Machinery, New York, NY, USA, 1292–1303. https://doi.org/10.1145/2976749.2978429
+D.Kogan and H. Corrigan-Gibbs (2021). Private Blocklist Lookups with Checklist. In 30th USENIX Security Symposium (USENIX Security 21) https://www.usenix.org/conference/usenixsecurity21/presentation/kogan
 
 ### To read
 
