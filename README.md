@@ -14,9 +14,9 @@ E. Boyle, N. Gilboa, and Y. Ishai (2016). Function Secret Sharing: Improvements 
 
 D.Kogan and H. Corrigan-Gibbs (2021). Private Blocklist Lookups with Checklist. In 30th USENIX Security Symposium (USENIX Security 21) https://www.usenix.org/conference/usenixsecurity21/presentation/kogan
 
-### Reading
-
 B. Chor, O. Goldreich, E. Kushilevitz and M. Sudan (1995). Private Information Retrieval. Proc. of 36th FOCS, pp. 41-50. https://madhu.seas.harvard.edu/papers/1995/pir-journ.pdf
+
+### Reading
 
 ### To read
 
