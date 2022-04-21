@@ -16,11 +16,20 @@ D.Kogan and H. Corrigan-Gibbs (2021). Private Blocklist Lookups with Checklist. 
 
 B. Chor, O. Goldreich, E. Kushilevitz and M. Sudan (1995). Private Information Retrieval. Proc. of 36th FOCS, pp. 41-50. https://madhu.seas.harvard.edu/papers/1995/pir-journ.pdf
 
+B. Chor and N. Gilboa (1997). Computationally private information retrieval (extended abstract). In Proceedings of the twenty-ninth annual ACM symposium on Theory of computing (STOC '97). Association for Computing Machinery, New York, NY, USA, 304–313. https://doi.org/10.1145/258533.258609
+
 ### Reading
+
+A. Beimel, Y. Ishai, T. Malkin (2000). Reducing the Servers Computation in Private Information Retrieval: PIR with Preprocessing. In: Bellare, M. (eds) Advances in Cryptology — CRYPTO 2000. CRYPTO 2000. Lecture Notes in Computer Science, vol 1880. Springer, Berlin, Heidelberg. https://doi.org/10.1007/3-540-44598-6_4
 
 ### To read
 
-B. Chor and N. Gilboa (1997). Computationally private information retrieval (extended abstract). In Proceedings of the twenty-ninth annual ACM symposium on Theory of computing (STOC '97). Association for Computing Machinery, New York, NY, USA, 304–313. https://doi.org/10.1145/258533.258609
+A. Ambainis (1996). Upper bound on the communication complexity of private information retrieval. In: Degano, P., Gorrieri, R., Marchetti-Spaccamela, A. (eds) Automata, Languages and Programming. ICALP 1997. Lecture Notes in Computer Science, vol 1256. Springer, Berlin, Heidelberg. https://doi.org/10.1007/3-540-63165-8_196
+
+Y. Gertner, Y. Ishai, E. Kushilevitz, and T. Malkin (1997). Protecting Data Privacy in
+Private Information Retrieval Schemes. In Proceedings of the thirtieth annual ACM symposium on Theory of computing (STOC '98). Association for Computing Machinery, New York, NY, USA, 151–160. DOI:https://doi.org/10.1145/276698.276723
+
+B. Chor, N. Gilboa, and M. Naor (1997). Private Information Retrieval by Keywords.TR CS0917, Department of Computer Science, Technion https://www.cs.bgu.ac.il/~gilboan/publications/PERKY.pdf
 
 F. Olumofin and I. Goldberg (2011). Revisiting the computational practicality of private information retrieval. In Financial Cryptography and Data Security, pages 158–172. https://doi.org/10.1007/978-3-642-27576-0_13
 
