@@ -18,9 +18,11 @@ B. Chor, O. Goldreich, E. Kushilevitz and M. Sudan (1995). Private Information R
 
 B. Chor and N. Gilboa (1997). Computationally private information retrieval (extended abstract). In Proceedings of the twenty-ninth annual ACM symposium on Theory of computing (STOC '97). Association for Computing Machinery, New York, NY, USA, 304–313. https://doi.org/10.1145/258533.258609
 
+A. Beimel, Y. Ishai, T. Malkin (2000). Reducing the Servers Computation in Private Information Retrieval: PIR with Preprocessing. In: Bellare, M. (eds) Advances in Cryptology — CRYPTO 2000. CRYPTO 2000. Lecture Notes in Computer Science, vol 1880. Springer, Berlin, Heidelberg. https://doi.org/10.1007/3-540-44598-6_4
+
 ### Reading
 
-A. Beimel, Y. Ishai, T. Malkin (2000). Reducing the Servers Computation in Private Information Retrieval: PIR with Preprocessing. In: Bellare, M. (eds) Advances in Cryptology — CRYPTO 2000. CRYPTO 2000. Lecture Notes in Computer Science, vol 1880. Springer, Berlin, Heidelberg. https://doi.org/10.1007/3-540-44598-6_4
+H. Corrigan-Gibbs, D. Kogan (2020). Private Information Retrieval with Sublinear Online Time. In: Canteaut, A., Ishai, Y. (eds) Advances in Cryptology – EUROCRYPT 2020. EUROCRYPT 2020. Lecture Notes in Computer Science(), vol 12105. Springer, Cham. https://doi.org/10.1007/978-3-030-45721-1_3
 
 ### To read
 
@@ -34,3 +36,12 @@ B. Chor, N. Gilboa, and M. Naor (1997). Private Information Retrieval by Keyword
 F. Olumofin and I. Goldberg (2011). Revisiting the computational practicality of private information retrieval. In Financial Cryptography and Data Security, pages 158–172. https://doi.org/10.1007/978-3-642-27576-0_13
 
 R. Ostrovsky and V. Shoup (1996). Private information storage (STOC '97). pp. 294-303. ACM. https://doi.org/10.1145/258533.258606
+
+D. Kales, O. Omolola, S. Ramacher (2019).Revisting User Privacy for Certificate Transparency.EuroS&P 2019
+
+G. Di Crescenzo, Y. Ishai, and R. Ostrovsky (2001).Universal service-providers for private information retrieval. J. Cryptol., 14(1):37–74.
+
+S. Patel, G. Persiano, and K. Yeo (2018). Private stateful information retrieval. CCS 2018.
+
+ E. Boyle, Y. Ishai, R. Pass, and M. Wootters. Can we access a database
+both locally and privately? TCC 2017.
