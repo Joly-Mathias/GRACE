@@ -706,30 +706,20 @@ static const uint32_t rcon[10] =
 
 // ------------------------------ KEY EXPANSION ------------------------------
 
-#define GET32(plain) (((uint32_t)(plain)[0] << 24) ^ \
-                    ((uint32_t)(plain)[1] << 16) ^ \
-                    ((uint32_t)(plain)[2] <<  8) ^ \
-                    ((uint32_t)(plain)[3]))
-
-#define PUT32(cipher, st) { (cipher)[0] = (uint8_t)((st) >> 24); \
-                         (cipher)[1] = (uint8_t)((st) >> 16); \
-                         (cipher)[2] = (uint8_t)((st) >>  8); \
-                         (cipher)[3] = (uint8_t)(st); }
-
 /**
  * Expand the cipher key into the encryption key schedule.
  *
  * @return the number of rounds for the given cipher key size.
  */
-int expandEncryptKey(uint32_t *rk, const uint8_t *key, int keybits)
+int expandEncryptKey(uint32_t *rk, const uint64_t *key, int keybits)
 {
   int i = 0;
   uint32_t temp;
 
-  rk[0] = GET32(key     );
-  rk[1] = GET32(key +  4);
-  rk[2] = GET32(key +  8);
-  rk[3] = GET32(key + 12);
+  rk[0] = key[0] ;
+  rk[1] = key[0] >> 32 ;
+  rk[2] = key[1] ;
+  rk[3] = key[1] >> 32 ;
   if (keybits == 128)
   {
     for (;;)
@@ -749,10 +739,6 @@ int expandEncryptKey(uint32_t *rk, const uint8_t *key, int keybits)
       rk += 4;
     }
   }
-//   rk[4] = GET32(key + 16);
-//   rk[5] = GET32(key + 20);
-//   rk[6] = GET32(key + 24);
-//   rk[7] = GET32(key + 28);
   return 0;
 }
 
@@ -761,7 +747,7 @@ int expandEncryptKey(uint32_t *rk, const uint8_t *key, int keybits)
  *
  * @return the number of rounds for the given cipher key size.
  */
-int expandDecryptKey(uint32_t *rk, const uint8_t *key, int keybits)
+int expandDecryptKey(uint32_t *rk, const uint64_t *key, int keybits)
 {
   int nrounds, i, j;
   uint32_t temp;
@@ -806,7 +792,7 @@ int expandDecryptKey(uint32_t *rk, const uint8_t *key, int keybits)
 
 // ------------------------------ AES ENCRYPTION/DECRYPTION ------------------------------
 
-void encryptAES(const uint32_t *rk, int nrounds, const uint8_t plain[16], uint8_t cipher[16])
+void encryptAES(const uint32_t *rk, int nrounds, const uint64_t plain[2], uint64_t cipher[2])
 {
   uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
   #ifndef FULL_UNROLL
@@ -815,11 +801,11 @@ void encryptAES(const uint32_t *rk, int nrounds, const uint8_t plain[16], uint8_
   /*
    * map byte array block to cipher state
    * and add initial round key:
-  */
-  s0 = GET32(plain     ) ^ rk[0];
-  s1 = GET32(plain +  4) ^ rk[1];
-  s2 = GET32(plain +  8) ^ rk[2];
-  s3 = GET32(plain + 12) ^ rk[3];
+  */ 
+  s0 = plain[0] ^ rk[0];
+  s1 = (plain[0] >> 32) ^ rk[1];
+  s2 = plain[1] ^ rk[2];
+  s3 = (plain[1] >> 32) ^ rk[3];
   #ifdef FULL_UNROLL
     /* round 1: */
     t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ rk[ 4];
@@ -938,31 +924,29 @@ void encryptAES(const uint32_t *rk, int nrounds, const uint8_t plain[16], uint8_
     (Sbox[(t2 >>  8) & 0xff] & 0x0000ff00) ^
     (Sbox[(t3      ) & 0xff] & 0x000000ff) ^
     rk[0];
-  PUT32(cipher     , s0);
   s1 =
     (Sbox[(t1 >> 24)       ] & 0xff000000) ^
     (Sbox[(t2 >> 16) & 0xff] & 0x00ff0000) ^
     (Sbox[(t3 >>  8) & 0xff] & 0x0000ff00) ^
     (Sbox[(t0      ) & 0xff] & 0x000000ff) ^
     rk[1];
-  PUT32(cipher +  4, s1);
+  cipher[0] = ((uint64_t)s0 << 32) ^ s1;
   s2 =
     (Sbox[(t2 >> 24)       ] & 0xff000000) ^
     (Sbox[(t3 >> 16) & 0xff] & 0x00ff0000) ^
     (Sbox[(t0 >>  8) & 0xff] & 0x0000ff00) ^
     (Sbox[(t1      ) & 0xff] & 0x000000ff) ^
     rk[2];
-  PUT32(cipher +  8, s2);
   s3 =
     (Sbox[(t3 >> 24)       ] & 0xff000000) ^
     (Sbox[(t0 >> 16) & 0xff] & 0x00ff0000) ^
     (Sbox[(t1 >>  8) & 0xff] & 0x0000ff00) ^
     (Sbox[(t2      ) & 0xff] & 0x000000ff) ^
     rk[3];
-  PUT32(cipher + 12, s3);
+  cipher[1] = ((uint64_t)s2 << 32) ^ s3;
 }
 
-void decryptAES(const uint32_t *rk, int nrounds, const uint8_t cipher[16], uint8_t plain[16])
+void decryptAES(const uint32_t *rk, int nrounds, const uint64_t cipher[16], uint64_t plain[16])
 {
   uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
   #ifndef FULL_UNROLL
@@ -973,10 +957,10 @@ void decryptAES(const uint32_t *rk, int nrounds, const uint8_t cipher[16], uint8
   * map byte array block to cipher state
   * and add initial round key:
   */
-    s0 = GET32(cipher     ) ^ rk[0];
-    s1 = GET32(cipher +  4) ^ rk[1];
-    s2 = GET32(cipher +  8) ^ rk[2];
-    s3 = GET32(cipher + 12) ^ rk[3];
+    s0 = cipher[0] ^ rk[0];
+    s1 = (cipher[0] >> 32) ^ rk[1];
+    s2 = cipher[1] ^ rk[2];
+    s3 = (cipher[1] >> 32) ^ rk[3];
   #ifdef FULL_UNROLL
     /* round 1: */
     t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ rk[ 4];
@@ -1095,26 +1079,24 @@ void decryptAES(const uint32_t *rk, int nrounds, const uint8_t cipher[16], uint8
     (ISbox[(t2 >>  8) & 0xff] & 0x0000ff00) ^
     (ISbox[(t1      ) & 0xff] & 0x000000ff) ^
     rk[0];
-  PUT32(plain     , s0);
   s1 =
     (ISbox[(t1 >> 24)       ] & 0xff000000) ^
     (ISbox[(t0 >> 16) & 0xff] & 0x00ff0000) ^
     (ISbox[(t3 >>  8) & 0xff] & 0x0000ff00) ^
     (ISbox[(t2      ) & 0xff] & 0x000000ff) ^
     rk[1];
-  PUT32(plain +  4, s1);
+  plain[0] = ((uint64_t)s0 << 32) ^ s1;
   s2 =
     (ISbox[(t2 >> 24)       ] & 0xff000000) ^
     (ISbox[(t1 >> 16) & 0xff] & 0x00ff0000) ^
     (ISbox[(t0 >>  8) & 0xff] & 0x0000ff00) ^
     (ISbox[(t3      ) & 0xff] & 0x000000ff) ^
     rk[2];
-  PUT32(plain +  8, s2);
   s3 =
     (ISbox[(t3 >> 24)       ] & 0xff000000) ^
     (ISbox[(t2 >> 16) & 0xff] & 0x00ff0000) ^
     (ISbox[(t1 >>  8) & 0xff] & 0x0000ff00) ^
     (ISbox[(t0      ) & 0xff] & 0x000000ff) ^
     rk[3];
-  PUT32(plain + 12, s3);
+  plain[1] = ((uint64_t)s2 << 32) ^ s3;
 }
