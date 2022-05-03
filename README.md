@@ -45,3 +45,13 @@ S. Patel, G. Persiano, and K. Yeo (2018). Private stateful information retrieval
 
  E. Boyle, Y. Ishai, R. Pass, and M. Wootters. Can we access a database
 both locally and privately? TCC 2017.
+
+Z. Dvir and S. Gopi. 2-server PIR with subpolynomial communication. J. ACM, 63(4):39:1–39:15, 2016.
+
+#### Codes correcteurs
+
+Swastik Kopparty, Shubangi Saraf and Sergey Yekhanin. High-Rate Codes with Sublinear-Time Decoding. In STOC 2011, Proceedings of the Fourty-third Annual ACM Symposium on Theory of Computing, 2011.
+
+Jonathan Katz and Luca Trevisan. On the efficiency of local decoding procedures for error-correcting codes. In STOC 2000, Proceedings of the Thirty Second Annual ACM Symposium on Theory of Computing, 2000.
+
+. Augot, F. Levy-dit-Vehel, A. Shikfa. “A Storage-efficient and Robust Private Information Retrieval Scheme allowing few servers”. Proceedings of 13th International Conference on Cryptography and Network Security, CANS’2014, Springer vol.8813 pp.222–239, 2014.

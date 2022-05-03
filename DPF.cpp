@@ -9,11 +9,14 @@
 // # include <smmintrin.h>
 
 # include "AES.hpp"
-# include "PRG.hpp"
 
 # define LAMBDA (127)
+# define KEYBITS (128)
 
 std::mt19937_64 gen;
+
+uint64_t init_vect0[2];
+uint64_t init_vect1[2];
 
 uint64_t power2[64] =
 {
@@ -35,12 +38,133 @@ uint64_t power2[64] =
     0x1000000000000000U, 0x2000000000000000U, 0x4000000000000000U, 0x8000000000000000U, 
 };
 
+uint64_t masks[64] = 
+{
+    0xffffffffffffffffU, 0x7fffffffffffffffU, 0x3fffffffffffffffU, 0x1fffffffffffffffU,
+    0x0fffffffffffffffU, 0x07ffffffffffffffU, 0x03ffffffffffffffU, 0x01ffffffffffffffU,
+    0x00ffffffffffffffU, 0x007fffffffffffffU, 0x003fffffffffffffU, 0x001fffffffffffffU,
+    0x000fffffffffffffU, 0x0007ffffffffffffU, 0x0003ffffffffffffU, 0x0001ffffffffffffU,
+    0x0000ffffffffffffU, 0x00007fffffffffffU, 0x00003fffffffffffU, 0x00001fffffffffffU,
+    0x00000fffffffffffU, 0x000007ffffffffffU, 0x000003ffffffffffU, 0x000001ffffffffffU,
+    0x000000ffffffffffU, 0x0000007fffffffffU, 0x0000003fffffffffU, 0x0000001fffffffffU,
+    0x0000000fffffffffU, 0x00000007ffffffffU, 0x00000003ffffffffU, 0x00000001ffffffffU,
+    0x00000000ffffffffU, 0x000000007fffffffU, 0x000000003fffffffU, 0x000000001fffffffU,
+    0x000000000fffffffU, 0x0000000007ffffffU, 0x0000000003ffffffU, 0x0000000001ffffffU,
+    0x0000000000ffffffU, 0x00000000007fffffU, 0x00000000003fffffU, 0x00000000001fffffU,
+    0x00000000000fffffU, 0x000000000007ffffU, 0x000000000003ffffU, 0x000000000001ffffU,
+    0x000000000000ffffU, 0x0000000000007fffU, 0x0000000000003fffU, 0x0000000000001fffU,
+    0x0000000000000fffU, 0x00000000000007ffU, 0x00000000000003ffU, 0x00000000000001ffU,
+    0x00000000000000ffU, 0x000000000000007fU, 0x000000000000003fU, 0x000000000000001fU,
+    0x000000000000000fU, 0x0000000000000007U, 0x0000000000000003U, 0x0000000000000001U
+};
+
 void key_gen(uint64_t* seed_128)
 {
     seed_128[0] = gen();
     seed_128[1] = gen() & 0xfffffffffffffffeU;
     // The seed is actually 127 bits, so one bit is free
     // We set the last bit at 0 to facilitate concatenation
+};
+
+void incrementation(uint64_t* init_vect)
+{
+    init_vect[1] += 1;
+    if (init_vect[1] == 0)
+    {
+        init_vect[0] += 1;
+    }
+};
+
+void decrementation(uint64_t* init_vect)
+{
+    if (init_vect[1] == 0)
+    {
+        init_vect[0] -= 1;
+        init_vect[1] = 0xffffffffffffffffU;
+    }
+    else
+    {
+        init_vect[1] -=1;
+    }
+};
+
+void concatenateKey(const uint64_t* key_1, const int n1, const uint64_t* key_2, const int n2, uint64_t* key)
+{
+    int p1 = n1 / 64;
+    int q1 = n1 % 64;
+    int p2 = n2 / 64;
+    int q2 = n2 % 64;
+
+    for (int i = 0; i < p1; i++)
+    {
+        key[i] = key_1[i];
+    }
+    if (q1 == 0 )
+    {
+        for (int j = 0 ; j < p2; j++)
+        {
+            key[p1 + j] = key_2[j];
+        }
+        if (q2 > 0)
+        {
+            key[p1 + p2] = key_2[p2];
+        }
+    }
+    else
+    {
+        uint64_t mask = masks[64 - q1];
+        key[p1] = key_1[p1] + (key_2[0] >> q1);
+        for (int j = 0 ; j < p2; j++)
+        {
+            key[p1 + j + 1] = ((key_2[j] & mask) << (64 - q1)) ^ (key_2[j+1] >> q1);
+        }
+        if (q2 + q1 > 64)
+        {
+            key[p1 + p2 + 1] = (key_2[p2] & mask) << (64 - q1);
+        }
+    }
+};
+
+void doubleKey(const uint64_t* key_128, uint64_t* key_256)
+{
+    // Round Keys
+    uint32_t rk[44];
+    int nrounds = expandEncryptKey(rk, key_128, 128);
+
+    // Initial vectors incrementation
+    incrementation(init_vect0);
+    incrementation(init_vect1);
+  
+    // AES encryption
+    uint64_t cipher0[2];
+    uint64_t cipher1[2];
+    encryptAES(rk, nrounds, init_vect0, cipher0);
+    encryptAES(rk, nrounds, init_vect1, cipher1);
+  
+    // AES(0) XOR s||0
+    key_256[0] = cipher0[0] ^ key_128[0];
+    key_256[1] = cipher0[1] ^ key_128[1];
+    // AES(1) XOR s||0
+    key_256[2] = (cipher1[0] ^ 0xffffffffffffffffU) ^ key_128[0];
+    key_256[3] = (cipher1[1] ^ 0xffffffffffffffffU) ^ key_128[1];
+};
+
+void inv_doubleKey(const uint64_t* key_128, uint64_t* key_256)
+{
+    // Round Keys
+    uint32_t rk[44];
+    int nrounds = expandEncryptKey(rk, key_128, 128);
+  
+    // AES encryption
+    uint64_t cipher0[2];
+    uint64_t cipher1[2];
+    encryptAES(rk, nrounds, init_vect0, cipher0);
+    encryptAES(rk, nrounds, init_vect1, cipher1);
+  
+    // Verification (all must be equal)
+    std::cout << key_128[0] << ' ' << key_128[1] << std::endl;
+    std::cout << (key_256[0] ^ cipher0[0]) << ' ' << (key_256[1] ^ cipher0[1]) << std::endl;
+    std::cout << (key_256[2] ^ cipher1[0] ^ 0xffffffffffffffffU) << ' ' << (key_256[3] ^ cipher1[1] ^ 0xffffffffffffffffU) << std::endl;
 };
 
 void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, const uint64_t* beta, const int beta_bits, uint64_t* key_0, uint64_t* key_1)
@@ -94,7 +218,7 @@ void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, const
 
 
     
-}
+};
 
 int main(int argc, char **argv)
 {
@@ -116,7 +240,7 @@ int main(int argc, char **argv)
         // std::cout << seed << std::endl;
     }
 
-    // Converting alpha from char to uint8_bit
+    // Converting alpha from char to uint64_bit
     char* alpha_char = argv[2];
     int alpha_bits = strlen(alpha_char);
     int p = alpha_bits / 64;
@@ -139,7 +263,7 @@ int main(int argc, char **argv)
         alpha[p] ^= (uint64_t)temp << (56 - 8 * j);
     }
 
-    // Converting beta from char to uint8_bit
+    // Converting beta from char to uint64_t
     char* beta_char = argv[2];
     int beta_bits = strlen(beta_char);
     p = beta_bits / 64;
@@ -179,56 +303,41 @@ int main(int argc, char **argv)
     TESTS :
     // Seeding mersene random generator
     gen.seed(seed);
-    uint64_t* a = (uint64_t*) calloc(2 , 64);;
-    if (a == NULL) { exit(1); }
-    key_gen(a);
-    uint64_t* b = (uint64_t*) calloc(2 , 64);
-    if (b == NULL) { exit(1); }
-    key_gen(b);
+    key_gen(init_vect0);
+    key_gen(init_vect1);
 
     std::cout << std::endl;
-    std::cout << "avant : " << a[0] << ' ' << a[1] << std::endl;
-    std::cout << "avant : " << b[0] << ' ' << b[1] << std::endl;
+    std::cout << "VALEURS" << std::endl;
+    std::cout << "vecteur initialisation 0 " << init_vect0[0] << ' ' << init_vect0[1] << std::endl;
+    std::cout << "vecteur initialisation 1 " << init_vect0[0] << ' ' << init_vect0[1] << std::endl;
+
+    uint64_t* key_127 = (uint64_t*) calloc(2 , 64);;
+    if (key_127 == NULL) { exit(1); }
+    key_gen(key_127);
+    std::cout << "clef 127 bits : " << key_127[0] << ' ' << key_127[1] << std::endl;
+
+    uint64_t* key_256 = (uint64_t*) calloc(4 , 64);
+    if (key_256 == NULL) { exit(1); }
 
     std::cout << std::endl;
-    uint64_t* c = (uint64_t*) calloc(4 , 64);;
-    if (c == NULL) { exit(1); }
-    concatenateKey(a, 128, b, 128, c);
-
+    std::cout << "EXPANSION DE CLEF" << std::endl;
+    doubleKey(key_127, key_256);
+    std::cout << "clef 256 bits : " << key_256[0] << ' ' << key_256[1] << ' ' << key_256[2] << ' ' << key_256[3] << std::endl;
     std::cout << std::endl;
-    uint64_t* d = (uint64_t*) calloc(4 , 64);;
-    if (d == NULL) { exit(1); }
-    concatenateKey(a, 127, b, 127, d);
-
+    std::cout << "VERIFICATION VALEURS" << std::endl;
+    std::cout << "vecteur initialisation 0 " << init_vect0[0] << ' ' << init_vect0[1] << std::endl;
+    std::cout << "vecteur initialisation 1 " << init_vect0[0] << ' ' << init_vect0[1] << std::endl;
+    std::cout << "clef 127 bits : " << key_127[0] << ' ' << key_127[1] << std::endl;
     std::cout << std::endl;
-    uint64_t* e = (uint64_t*) calloc(4 , 64);;
-    if (e == NULL) { exit(1); }
-    concatenateKey(a+1, 63, b, 127, e+1);
-
+    std::cout << "DECLIN DE CLEF" << std::endl;
+    inv_doubleKey(key_127, key_256);
     std::cout << std::endl;
-    std::cout << "apres : " << a[0] << ' ' << a[1] << std::endl;
-    std::cout << "apres : " << b[0] << ' ' << b[1] << std::endl;
-    std::cout << std::endl;
-    std::cout << "externe : " << c[0] << ' ' << c[1] << ' ' << c[2] << ' ' << c[3] << std::endl;
-    std::cout << "externe : " << d[0] << ' ' << d[1] << ' ' << d[2] << ' ' << d[3] << std::endl;
-    std::cout << "externe : " << e[0] << ' ' << e[1] << ' ' << e[2] << ' ' << e[3] << std::endl;
+    std::cout << "VERIFICATION VALEURS" << std::endl;
+    std::cout << "vecteur initialisation 0 " << init_vect0[0] << ' ' << init_vect0[1] << std::endl;
+    std::cout << "vecteur initialisation 1 " << init_vect0[0] << ' ' << init_vect0[1] << std::endl;
+    std::cout << "clef 127 bits : " << key_127[0] << ' ' << key_127[1] << std::endl;
     
-    free(a); free(b); free(c); free(d); free(e);
-
-    // uint64_t f[2];
-    // f[0] = 0xffffffffffffffffU;
-    // f[1] = 0x1111111100000000U;
-    // uint64_t g[2];
-    // g[0] = 0xaaaaaaaaaaaaaaaaU;
-    // g[1] = 0xcccccccc00000000U;
-    // uint64_t h[3];
-    // concatenateKey(f, 96, g, 96, h);
-
-    // std::cout << std::endl;
-    // std::cout << f[0] << ' ' << f[1] << std::endl;
-    // std::cout << g[0] << ' ' << g[1] << std::endl;
-    // std::cout << h[0] << ' ' << h[1] << ' ' << h[2] << std::endl;
-    // std::cout << std::endl;
+    free(key_127); free(key_256);
 
     return 0;
 }
