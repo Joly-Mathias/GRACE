@@ -20,9 +20,11 @@ B. Chor and N. Gilboa (1997). Computationally private information retrieval (ext
 
 A. Beimel, Y. Ishai, T. Malkin (2000). Reducing the Servers Computation in Private Information Retrieval: PIR with Preprocessing. In: Bellare, M. (eds) Advances in Cryptology — CRYPTO 2000. CRYPTO 2000. Lecture Notes in Computer Science, vol 1880. Springer, Berlin, Heidelberg. https://doi.org/10.1007/3-540-44598-6_4
 
+H. Corrigan-Gibbs, D. Kogan (2020). Private Information Retrieval with Sublinear Online Time. In: Canteaut, A., Ishai, Y. (eds) Advances in Cryptology – EUROCRYPT 2020. EUROCRYPT 2020. Lecture Notes in Computer Science(), vol 12105. Springer, Cham. https://doi.org/10.1007/978-3-030-45721-1_3
+
 ### Reading
 
-H. Corrigan-Gibbs, D. Kogan (2020). Private Information Retrieval with Sublinear Online Time. In: Canteaut, A., Ishai, Y. (eds) Advances in Cryptology – EUROCRYPT 2020. EUROCRYPT 2020. Lecture Notes in Computer Science(), vol 12105. Springer, Cham. https://doi.org/10.1007/978-3-030-45721-1_3
+E. Boyle, N. Gilboa and Y. Ishai (2019). Secure Computation with Preprocessing via Function Secret Sharing. In: Cryptology ePrint Archive, Report 2019/1095. https://ia.cr/2019/1095
 
 ### To read
 
