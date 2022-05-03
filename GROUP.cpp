@@ -5,7 +5,7 @@
 # include <cstdio>
 # include <cstring>
 
-// # include "GROUP.hpp"
+# include "GROUP.hpp"
 
 # define LAMBDA (127)
 # define KEYBITS (128)
@@ -130,10 +130,19 @@ void convert(const uint64_t* seed, uint64_t* g_seed, const int g_bits)
 
 void addition(uint64_t* g1, const uint64_t* g2, const int p, const int q)
 {
-    g1[0] = g1[0] - g2[0];
+    g1[0] = g1[0] + g2[0];
     for (int i = p; i > 0; i--)
     {
         g1[i] = g1[i] + g2[i];
+    }
+}
+
+void substraction(uint64_t* g1, const uint64_t* g2, const int p, const int q)
+{
+    g1[0] = g1[0] - g2[0];
+    for (int i = p; i > 0; i--)
+    {
+        g1[i] = g1[i] - g2[i];
     }
 }
 

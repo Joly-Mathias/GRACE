@@ -9,6 +9,7 @@
 // # include <smmintrin.h>
 
 # include "AES.hpp"
+# include "GROUP.hpp"
 
 # define LAMBDA (127)
 # define KEYBITS (128)
