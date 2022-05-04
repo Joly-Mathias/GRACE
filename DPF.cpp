@@ -117,11 +117,12 @@ void get_tLR(const uint64_t* sLR, int* tLR)
     tLR[1] = sLR[1] % 2; // tR
 };
 
-int get_tCW(const uint64_t* key, const int input_bits, const int round)
+void get_tCW(const uint64_t* key, const int input_bits, const int round, int* tCW)
 {
     int index = 2*(input_bits + 1) + (round / 32);
-    int tLR = key[index] >> (2 * (31 - (round % 32)));
-    return tLR % 4;
+    uint64_t temp = key[index] >> (2 * (31 - (round % 32)));
+    tCW[0] = (temp % 4) / 2;
+    tCW[1] = temp % 2;
 };
 
 void put_tCW(uint64_t* key, const int input_bits, const int round, const int tLR)
@@ -225,6 +226,66 @@ void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, uint6
     
 };
 
+void Eval(const uint64_t* input, const int input_bits, uint64_t* output, const int output_bits, const uint64_t* key, const int b)
+{
+    // Variables
+    int t = b;
+    uint64_t* s = (uint64_t*) calloc(2 , 64);;
+    if (s == NULL) { exit(1); }
+    s[0] = key[0];
+    s[1] = key[1];
+    int tCW[2];
+    uint64_t* sCW = (uint64_t*) calloc(2 , 64);;
+    if (sCW == NULL) { exit(1); }
+    uint64_t* Tau = (uint64_t*) calloc(4 , 64);;
+    if (Tau == NULL) { exit(1); }
+
+    // Loop
+    for (int i = 1; i <= input_bits; i++)
+    {
+        sCW[0] = key[2 * i];
+        sCW[1] = key[2 * i + 1];
+        get_tCW(key, input_bits, i, tCW);
+
+        doubleKey(input, Tau);
+        if (t==1)
+        {
+            Tau[0] ^= sCW[0];
+            Tau[1] ^= (sCW[1] & 0x0000000000000001U) ^ tCW[0];
+            Tau[2] ^= sCW[0];
+            Tau[3] ^= (sCW[1] & 0x0000000000000001U) + tCW[1];
+        }
+
+        int inv_input_i = (input[i/64] & power2[64 - i] == 0); // input_i XOR 1
+        if (inv_input_i == 1)
+        {
+            s[0] = Tau[0];
+            s[1] = Tau[1];
+            t = Tau[1] % 2;
+        }
+        else
+        {
+            s[0] = Tau[1];
+            s[1] = Tau[2];
+            t = Tau[3] % 2;
+        }        
+    }
+
+    int p = output_bits / 64;
+    int q = output_bits % 64;
+    int n = (input_bits + 1)*2 + ((2*input_bits) / 64);
+    if ((2 * input_bits) % 64 != 0) { n++; }
+    convert(s, output, output_bits);
+    if (t == 1)
+    {
+        add(output, (key + n), p, q);
+    }
+    if (b == 1)
+    {
+        negative(output, p, q);
+    }
+}
+
 int main(int argc, char **argv)
 {
     char mode = '0'; // NULL
@@ -327,22 +388,46 @@ int main(int argc, char **argv)
 
     Gen(seed, alpha, alpha_bits, beta, beta_bits, key_0, key_1);
 
+    // std::cout << std::endl;
+    // std::cout << "KEYS" << std::endl;
+    // for (int i = 0; i < n; i++)
+    // {
+    //     std::cout << key_0[i] << ' ' << key_1[i] << std::endl;
+    // }
+    // std::cout << std::endl;
+    // std::cout << "CW final" << std::endl;
+    // for (int i = 0; i < n2; i++)
+    // {
+    //     std::cout << beta[i] << std::endl;
+    // }
+
+    uint64_t* beta0 = (uint64_t*) calloc(n2, 64);
+    if (beta0==NULL) { exit(1); }
+    Eval(alpha, alpha_bits, beta0, beta_bits, key_0, 0);
     std::cout << std::endl;
-    std::cout << "KEYS" << std::endl;
-    for (int i = 0; i < n; i++)
-    {
-        std::cout << key_0[i] << ' ' << key_1[i] << std::endl;
-    }
-    std::cout << std::endl;
-    std::cout << "CW final" << std::endl;
+    std::cout << "BETA (decoded by key0)" << std::endl;
     for (int i = 0; i < n2; i++)
     {
-        std::cout << beta[i] << std::endl;
+        std::cout << beta0[i] << ' ';
     }
+    uint64_t* beta1 = (uint64_t*) calloc(n2, 64);
+    if (beta1==NULL) { exit(1); }
+    Eval(alpha, alpha_bits, beta1, beta_bits, key_1, 1);
+    std::cout << std::endl;
+    std::cout << "BETA (decoded by key1)" << std::endl;
+    for (int i = 0; i < n2; i++)
+    {
+        std::cout << beta1[i] << ' ';
+    }
+    std::cout << std::endl;
+    std::cout << "XOR" << std::endl;
+    for (int i = 0; i < n2; i++)
+    {
+        std::cout << (beta0[i] ^ beta1[i]) << ' ';
+    }
+    std::cout << std::endl;
 
-    std::cout << std::endl << "On observe que key0 et key1 sont identiques sauf pour les 128 premiers bits et que les derniers bits valent CW final" << std::endl;
-
-    free(key_0); free(key_1); free(beta); free(alpha);
+    free(beta1); free(beta0); free(key_1); free(key_0); free(beta); free(alpha);
 
     return 0;
 }
