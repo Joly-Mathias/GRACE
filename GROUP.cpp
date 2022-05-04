@@ -43,51 +43,39 @@ void concatenate(const uint64_t* key_1, const int n1, const uint64_t* key_2, con
     int init2 = (q2 != 0);
     int init1 = (q1 != 0);
     int init = (q1 + q2 > 64) ? 2 : 1 - (1 - init1)*(1 - init2);
-    std::cout << "INIT : " << init << ' ' << init1 << ' ' << init2 << std::endl;
 
     for (int i = 0; i < p2; i++)
     {
-        std::cout << "RANK : " << (init + p1 + i) << ' ' << (init2 + i) << std::endl;
         key[init + p1 + i] = key_2[init2 + i];
     }
     if (q2 == 0 )
     {
         for (int j = 0; j < p1; j++)
         {
-            std::cout << "RANK : " << (init + j) << ' ' << (init1 + j) << std::endl;
             key[init + j] = key_1[init1 + j];
         }
         if (q1 > 0)
         {
-            std::cout << "RANK : " << 0 << ' ' << 0 << std::endl;
             key[0] = key_1[0] & mask1;
         }
-        std::cout << "VALS : " << key[0] << ' ' << key_1[0] << std::endl;
     }
     else
     {
         uint64_t mask2 = masks[64 - q2];
-
-        std::cout << "RANK : " << (init + p1 - 1) << ' ' << (init1 + p1 - 1) << ' ' << 0 << std::endl;
         key[init + p1 - 1] = (key_1[init1 + p1 - 1] << q2) ^ (key_2[0] & mask2);
         for (int j = 0; j < p1 - 1; j++)
         {
-            std::cout << "RANK : " << (init + j) << ' ' << (init1 + j) << ' ' << (init1 + j + 1) << std::endl;
             key[init + j] = ((key_1[init1 + j] << q2) ^ (key_1[init1 + j + 1] >> (64 - q2)));
         }
-        std::cout << "RANK : " << (init - 1) ;
         key[init - 1] ^= (key_1[init1] >> (64 - q2));
         if (p1 > 0 && init1 == 1)
         {
             std::cout << " 0" ;
             key[init - 1] ^= key_1[0] << q2;
         }
-        std::cout << ' ' << init1 << std::endl;
         if (init == 2)
         {
-            std::cout << "RANK : " << 0 << ' ' << 0 << std::endl;
             key[0] = (key_1[0] & mask1) >> (64 - (q1 + q2 % 64));
-            std::cout << "VALS : " << key[0] << ' ' << key_1[0] << std::endl;
         }
     }
 };
@@ -128,25 +116,76 @@ void convert(const uint64_t* seed, uint64_t* g_seed, const int g_bits)
     }
 }
 
-void addition(uint64_t* g1, const uint64_t* g2, const int p, const int q)
+void add(uint64_t* g1, const uint64_t* g2, const int p, const int q)
 {
-    g1[0] = g1[0] + g2[0];
-    for (int i = p; i > 0; i--)
+    uint64_t retenue = 0;
+    int fin = p;
+    int deb = 0;
+    if (q != 0)
     {
-        g1[i] = g1[i] + g2[i];
+        fin ++;
+        deb ++;
+    }
+    for (int i = fin; i > deb; i--)
+    {
+        uint64_t temp = g1[i-1];
+        g1[i-1] = temp + retenue + g2[i-1];
+        if (g1[i-1] < temp)
+        {
+            retenue = 1;
+        }     
+    }
+    if ( deb == 1)
+    {
+        g1[0] = (g1[0] + retenue + g2[0]) & masks[64 - q];
     }
 }
 
-void substraction(uint64_t* g1, const uint64_t* g2, const int p, const int q)
+void subtract(uint64_t* g1, const uint64_t* g2, const int p, const int q)
 {
-    g1[0] = g1[0] - g2[0];
-    for (int i = p; i > 0; i--)
+    uint64_t retenue = 0;
+    int fin = p;
+    int deb = 0;
+    if (q != 0)
     {
-        g1[i] = g1[i] - g2[i];
+        fin ++;
+        deb ++;
+    }
+    for (int i = fin; i > deb; i--)
+    {
+        uint64_t temp = g1[i-1];
+        g1[i-1] = temp - retenue - g2[i-1];
+        if (g1[i-1] > temp)
+        {
+            retenue = 1;
+        }     
+    }
+    if ( deb == 1)
+    {
+        g1[0] = (g1[0] - retenue - g2[0]) & masks[64 - q];
     }
 }
 
-void operation(const int t, const uint64_t* beta, const int beta_bits, const uint64_t* s0, const uint64_t* s1, uint64_t* CW)
+void negative(uint64_t* g, const int p, const int q)
+{
+    int fin = p;
+    int deb = 0;
+        if (q != 0)
+    {
+        fin ++;
+        deb ++;
+    }
+    for (int i = fin; i > deb; i--)
+    {
+        g[i-1] =  - g[i-1];    
+    }
+    if ( deb == 1)
+    {
+        g[0] = (- g[0]) & masks[64 - q];
+    }
+}
+
+void get_final_CW(const int t, const uint64_t* beta, const int beta_bits, const uint64_t* s0, const uint64_t* s1, uint64_t* CW)
 {
     int p = beta_bits / 64;
     int q = beta_bits % 64;
@@ -162,7 +201,7 @@ void operation(const int t, const uint64_t* beta, const int beta_bits, const uin
 
     for (int i = 0; i < p; i++)
     {
-        
+        // TO DO
     }
 }
 
@@ -176,12 +215,22 @@ void operation(const int t, const uint64_t* beta, const int beta_bits, const uin
 //     g[1] = 0x0000000000000001U;
 //     uint64_t* h = (uint64_t*) calloc(4 , 64);
 //     if (h == NULL) { exit(1); }
-//     concatenate(f, 66, g, 65, h);
+//     int q = 3;
+//     int p = 1;
+//     concatenate(f, 64*p + q, g, 64*p + q, h);
 
 //     std::cout << std::endl;
 //     std::cout << f[0] << ' ' << f[1] << std::endl;
 //     std::cout << g[0] << ' ' << g[1] << std::endl;
+//     std::cout << std::endl;
 //     std::cout << h[0] << ' ' << h[1] << ' ' << h[2]  << ' ' << h[3] << std::endl;
+//     add(f,g,p,q);
+//     std::cout << f[0] << ' ' << f[1] << std::endl;
+//     subtract(f,g,p,q);
+//     std::cout << f[0] << ' ' << f[1] << std::endl;
+//     negative(g,p,q);
+//     std::cout << g[0] << ' ' << g[1] << std::endl;
+//     std::cout << ((g[0] + 1) % 8) << ' ' << (g[1] + 1) << std::endl;
 //     std::cout << std::endl;
 
 //     free(h);
