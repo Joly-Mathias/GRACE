@@ -7,9 +7,6 @@
 
 # include "GROUP.hpp"
 
-# define LAMBDA (127)
-# define KEYBITS (128)
-
 std::mt19937_64 genG;
 
 uint64_t masks[64] = 
@@ -81,7 +78,7 @@ void concatenate(const uint64_t* key_1, const int n1, const uint64_t* key_2, con
 
 void convert(const uint64_t* seed, uint64_t* g_seed, const int g_bits)
 {
-    if (g_bits <= LAMBDA)
+    if (g_bits <= 128)
     {
         g_seed[0] = seed[0];
         if (g_bits > 64)
@@ -90,7 +87,7 @@ void convert(const uint64_t* seed, uint64_t* g_seed, const int g_bits)
         }
     }
     else
-    // it is rarely the case, we will make sure that the output size is lower than lambda
+    // it is rarely the case, we will make sure that the output size is equal or lower than lambda
     {
         int n = g_bits / 64 ;
         uint64_t* g_seed0 = (uint64_t*) calloc(n , 64);
@@ -190,19 +187,60 @@ void get_final_CW(uint64_t* beta, const int beta_bits, const uint64_t* s0, const
 {
     int p = beta_bits / 64;
     int q = beta_bits % 64;
-
     int n = p ;
     if (q != 0) { n++; }
+
     uint64_t* g_s0 = (uint64_t*) calloc(n, 64);
     if (g_s0==NULL) { exit(1); }
     convert(s0, g_s0, beta_bits);
+    // std::cout << std::endl;
+    // std::cout << "GSEED0" << std::endl;
+    // for (int i = 0; i < n; i++)
+    // {
+    //     std::cout << g_s0[i] << ' ';
+    // }
+    // std::cout << std::endl;
+
     uint64_t* g_s1 = (uint64_t*) calloc(n, 64);
     if (g_s1==NULL) { exit(1); }
     convert(s1, g_s1, beta_bits);
+    // std::cout << std::endl;
+    // std::cout << "GSEED1" << std::endl;
+    // for (int i = 0; i < n; i++)
+    // {
+    //     std::cout << g_s1[i] << ' ';
+    // }
+    // std::cout << std::endl;
 
     add(beta, g_s0, p, q);
+    // std::cout << std::endl;
+    // std::cout << "BETA + GSEED0" << std::endl;
+    // for (int i = 0; i < n; i++)
+    // {
+    //     std::cout << beta[i] << ' ';
+    // }
+    // std::cout << std::endl;
+
     subtract(beta, g_s1, p, q);
-    if (t==1) { negative(beta, p, q); }
+    // std::cout << std::endl;
+    // std::cout << "BETA - GSEED1 + GSEED0" << std::endl;
+    // for (int i = 0; i < n; i++)
+    // {
+    //     std::cout << beta[i] << ' ';
+    // }
+    // std::cout << std::endl;
+
+    if (t==1) 
+    { 
+        negative(beta, p, q);
+        // std::cout << std::endl;
+        // std::cout << "- 1  * (BETA - GSEED1 + GSEED0)" << std::endl;
+        // for (int i = 0; i < n; i++)
+        // {
+        //     std::cout << beta[i] << ' ';
+        // }
+        // std::cout << std::endl;
+    }
 
     free(g_s0); free(g_s1);
 }
