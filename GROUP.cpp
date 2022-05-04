@@ -70,7 +70,6 @@ void concatenate(const uint64_t* key_1, const int n1, const uint64_t* key_2, con
         key[init - 1] ^= (key_1[init1] >> (64 - q2));
         if (p1 > 0 && init1 == 1)
         {
-            std::cout << " 0" ;
             key[init - 1] ^= key_1[0] << q2;
         }
         if (init == 2)
@@ -113,6 +112,8 @@ void convert(const uint64_t* seed, uint64_t* g_seed, const int g_bits)
             g_seed1[i] = genG();
         }
         concatenate(g_seed0, n0, g_seed1, n1, g_seed);
+        
+        free(g_seed0); free(g_seed1); 
     }
 }
 
@@ -170,7 +171,7 @@ void negative(uint64_t* g, const int p, const int q)
 {
     int fin = p;
     int deb = 0;
-        if (q != 0)
+    if (q != 0)
     {
         fin ++;
         deb ++;
@@ -185,7 +186,7 @@ void negative(uint64_t* g, const int p, const int q)
     }
 }
 
-void get_final_CW(const int t, const uint64_t* beta, const int beta_bits, const uint64_t* s0, const uint64_t* s1, uint64_t* CW)
+void get_final_CW(uint64_t* beta, const int beta_bits, const uint64_t* s0, const uint64_t* s1, const int t)
 {
     int p = beta_bits / 64;
     int q = beta_bits % 64;
@@ -199,10 +200,11 @@ void get_final_CW(const int t, const uint64_t* beta, const int beta_bits, const 
     if (g_s1==NULL) { exit(1); }
     convert(s1, g_s1, beta_bits);
 
-    for (int i = 0; i < p; i++)
-    {
-        // TO DO
-    }
+    add(beta, g_s0, p, q);
+    subtract(beta, g_s1, p, q);
+    if (t==1) { negative(beta, p, q); }
+
+    free(g_s0); free(g_s1);
 }
 
 // int main()
@@ -215,23 +217,26 @@ void get_final_CW(const int t, const uint64_t* beta, const int beta_bits, const 
 //     g[1] = 0x0000000000000001U;
 //     uint64_t* h = (uint64_t*) calloc(4 , 64);
 //     if (h == NULL) { exit(1); }
+//     uint64_t* i = (uint64_t*) calloc(4 , 64);
+//     if (i == NULL) { exit(1); }
+
 //     int q = 3;
 //     int p = 1;
-//     concatenate(f, 64*p + q, g, 64*p + q, h);
-
 //     std::cout << std::endl;
 //     std::cout << f[0] << ' ' << f[1] << std::endl;
 //     std::cout << g[0] << ' ' << g[1] << std::endl;
 //     std::cout << std::endl;
+//     concatenate(f, 64*p + q, g, 64*p + q, h);
 //     std::cout << h[0] << ' ' << h[1] << ' ' << h[2]  << ' ' << h[3] << std::endl;
+//     convert(f, i, 250);
+//     std::cout << i[0] << ' ' << i[1] << ' ' << i[2]  << ' ' << i[3] << std::endl;
 //     add(f,g,p,q);
 //     std::cout << f[0] << ' ' << f[1] << std::endl;
 //     subtract(f,g,p,q);
 //     std::cout << f[0] << ' ' << f[1] << std::endl;
 //     negative(g,p,q);
 //     std::cout << g[0] << ' ' << g[1] << std::endl;
-//     std::cout << ((g[0] + 1) % 8) << ' ' << (g[1] + 1) << std::endl;
 //     std::cout << std::endl;
 
-//     free(h);
+//     free(h); free(i);
 // }

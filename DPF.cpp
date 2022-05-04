@@ -131,7 +131,7 @@ void put_tCW(uint64_t* key, const int input_bits, const int round, const int tLR
     key[index] += tLR * factor;
 };
 
-void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, const uint64_t* beta, const int beta_bits, uint64_t* key_0, uint64_t* key_1)
+void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, uint64_t* beta, const int beta_bits, uint64_t* key_0, uint64_t* key_1)
 {
     // Seeding mersene random generator
     gen.seed(seed);
@@ -144,8 +144,8 @@ void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, const
     key_gen(s_0);
     uint64_t* s_1 = (uint64_t*) calloc(2 , 64);;
     if (s_1 == NULL) { exit(1); }
-    key_gen(s_0);
-    
+    key_gen(s_1);
+
     // Initialisation
     int t[2] = {0, 0};
     key_0[0] = s_0[0];
@@ -161,69 +161,107 @@ void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, const
     int tLR_1[2];
     uint64_t* sLR_1 = (uint64_t*) calloc(4 , 64);;
     if (sLR_1 == NULL) { exit(1); }
-    int tCW;
+    int tCW[2];
     uint64_t* sCW = (uint64_t*) calloc(2 , 64);;
     if (sCW == NULL) { exit(1); }
 
     // Loop
     for (int i = 1; i <= alpha_bits; i++)
     {
+        // Seed expansion
         doubleKey(s_0, sLR_0);
         doubleKey(s_1, sLR_1);
         get_tLR(sLR_0, tLR_0);
         get_tLR(sLR_1, tLR_1);
-        int inv_alpha_i = (alpha[i/64] & power2[64 - i] == 0); // alpha_i XOR 1
 
+        // Variables
+        int inv_alpha_i = (alpha[i/64] & power2[64 - i] == 0); // alpha_i XOR 1
         if (inv_alpha_i == 1) { KEEP = 0; LOSE = 1; } else { KEEP = 1; LOSE = 0; } 
 
+        // Correcting words
         sCW[0] = sLR_0[LOSE * 2] ^ sLR_1[LOSE * 2];
         sCW[1] = sLR_0[LOSE * 2 + 1] ^ sLR_1[LOSE * 2 + 1];
-        // tCW sur 2 bits : tCW_L*2 + tCW_R
-        tCW = 2*(tLR_0[0] ^ tLR_1[0] ^ inv_alpha_i) + tLR_0[1] ^ tLR_1[1] ^ inv_alpha_i ^ 1; 
+        tCW[0] = tLR_0[0] ^ tLR_1[0] ^ inv_alpha_i;
+        tCW[1] = tLR_0[1] ^ tLR_1[1] ^ inv_alpha_i ^ 1; 
 
+        // Storage
         key_0[2*i] = sCW[0];
         key_0[2*i+1] = sCW[1];
-        put_tCW(key_0, alpha_bits, i, tCW);
-
+        put_tCW(key_0, alpha_bits, i, tCW[0]*2 + tCW[1]);
         key_1[2*i] = sCW[0];
         key_1[2*i+1] = sCW[1];
-        put_tCW(key_0, alpha_bits, i, tCW);
+        put_tCW(key_1, alpha_bits, i, tCW[0]*2 + tCW[1]);
+
+        // New seeds
+        s_0[0] = sLR_0[KEEP * 2];
+        s_0[1] = sLR_0[KEEP * 2 + 1];
+        if(t[0] == 1)
+        {
+            s_0[0] ^= sCW[0];
+            s_0[1] ^= sCW[1];
+            t[0] = tLR_0[KEEP] ^ tCW[KEEP] ;
+        }
+        s_1[0] = sLR_1[KEEP * 2];
+        s_1[1] = sLR_1[KEEP * 2 + 1];
+        if(t[1] == 1)
+        {
+            s_1[0] ^= sCW[0];
+            s_1[1] ^= sCW[1];
+            t[1] = tLR_1[KEEP] ^ tCW[KEEP] ;
+        }
     }
 
-    // CW (n+1) 
+    get_final_CW(beta, beta_bits, s_0, s_1, t[1]);
+    int deb = (alpha_bits+1)*2 + ((2*alpha_bits) / 64);
+    int fin = deb + (beta_bits / 64);
+    if ((2*alpha_bits) % 64 != 0) { deb += 1; }
+    if (beta_bits % 64 != 0) { fin += 1; }
+    for (int i = deb; i < fin; i++)
+    {
+        uint64_t temp = beta[i-deb];
+        key_0[i] = temp;
+        key_1[i] = temp;
+    }
     
 };
 
 int main(int argc, char **argv)
 {
-    if (argc < 4)
-    {
-        std::cout << "Missing argument\n" << std::endl;
-        return 1;
-    }
+    char mode = '0'; // NULL
+    if (argc == 4) { mode = 'G'; } // Gen
+    if (argc == 5) { mode = 'E'; } // Eval
+    if (mode == '0') { std::cout << "Wrong number of arguments" << std::endl; return 1; }
 
     // Converting seed from char to uint64_bit
     // The seed is composed of 8 ASCII characters stored on 8 bits
     char* seed_char = argv[1];
     uint64_t seed = 0x0000000000000000U;
     uint8_t temp;
+    std::cout << std::endl;
+    std::cout << "SEED" << std::endl;
+    std::cout << seed_char << std::endl;
     for (int i = 0; i < 8; i++)
     {
         temp = *seed_char != 0 ? *seed_char++ : 0;
         seed ^= (uint64_t)temp << (56 - 8 * i);
         // std::cout << seed << std::endl;
     }
+    std::cout << seed << std::endl;
+
 
     // Converting alpha from char to uint64_bit
     // Right block incomplete : 11010010 11101001 011XXXXX  
     char* alpha_char = argv[2];
-    int alpha_bits = strlen(alpha_char);
+    int alpha_bits = strlen(alpha_char)*8;
     int p = alpha_bits / 64;
     int q = alpha_bits % 64;
-    int n = p ;
-    if (q != 0) { n += 1; }
-    uint64_t* alpha = (uint64_t*) calloc(n, 64);
+    int n1 = p ;
+    if (q != 0) { n1 += 1; }
+    uint64_t* alpha = (uint64_t*) calloc(n1, 64);
     if (alpha==NULL) { exit(1); }
+    std::cout << std::endl;
+    std::cout << "ALPHA" << std::endl;
+    std::cout << alpha_char << std::endl;
     for (int i = 0; i < p; i++)
     {
         for (int j = 0 ; j < 8 ; j++)
@@ -237,17 +275,25 @@ int main(int argc, char **argv)
         temp = *alpha_char != 0 ? *alpha_char++ : 0;
         alpha[p] ^= (uint64_t)temp << (56 - 8 * j);
     }
+    for (int i = 0; i < n1; i++)
+    {
+        std::cout << alpha[i] << ' ';
+    }
+    std::cout << std::endl;
 
     // Converting beta from char to uint64_t 
     // Left block incomplete : XXXXX110 10010111 01001011 
-    char* beta_char = argv[2];
-    int beta_bits = strlen(beta_char);
+    char* beta_char = argv[3];
+    int beta_bits = strlen(beta_char)*8;
     p = beta_bits / 64;
     q = beta_bits % 64;
-    n = p ;
-    if (q != 0) { n += 1; }
-    uint64_t* beta = (uint64_t*) calloc(n, 64);
+    int n2 = p ;
+    if (q != 0) { n2 += 1; }
+    uint64_t* beta = (uint64_t*) calloc(n2, 64);
     if (beta==NULL) { exit(1); }
+    std::cout << std::endl;
+    std::cout << "BETA" << std::endl;
+    std::cout << beta_char << std::endl;
     for (int j = 0; j < q; j++)
     {
         temp = *beta_char != 0 ? *beta_char++ : 0;
@@ -258,10 +304,14 @@ int main(int argc, char **argv)
         for (int j = 0 ; j < 8 ; j++)
         {
             temp = *beta_char != 0 ? *beta_char++ : 0;
-            beta[n - p + i] ^= (uint64_t)temp << (56 - 8 * j);
+            beta[n2 - p + i] ^= (uint64_t)temp << (56 - 8 * j);
         }
     }
-
+    for (int i = 0; i < n2; i++)
+    {
+        std::cout << beta[i] << ' ';
+    }
+    std::cout << std::endl;
 
     // KEY REPRESENTATION (right block incomplete):
     // (alphabits + 1) * 127 bits in order to store the root seed and the correction word seeds sCW
@@ -277,46 +327,22 @@ int main(int argc, char **argv)
 
     Gen(seed, alpha, alpha_bits, beta, beta_bits, key_0, key_1);
 
+    std::cout << std::endl;
+    std::cout << "KEYS" << std::endl;
+    for (int i = 0; i < n; i++)
+    {
+        std::cout << key_0[i] << ' ' << key_1[i] << std::endl;
+    }
+    std::cout << std::endl;
+    std::cout << "CW final" << std::endl;
+    for (int i = 0; i < n2; i++)
+    {
+        std::cout << beta[i] << std::endl;
+    }
+
+    std::cout << std::endl << "On observe que key0 et key1 sont identiques sauf pour les 128 premiers bits et que les derniers bits valent CW final" << std::endl;
+
     free(key_0); free(key_1); free(beta); free(alpha);
-
-    // TESTS :
-    // // Seeding mersene random generator
-    // gen.seed(seed);
-    // key_gen(init_vect0);
-    // key_gen(init_vect1);
-
-    // std::cout << std::endl;
-    // std::cout << "VALEURS" << std::endl;
-    // std::cout << "vecteur initialisation 0 " << init_vect0[0] << ' ' << init_vect0[1] << std::endl;
-    // std::cout << "vecteur initialisation 1 " << init_vect0[0] << ' ' << init_vect0[1] << std::endl;
-
-    // uint64_t* key_127 = (uint64_t*) calloc(2 , 64);;
-    // if (key_127 == NULL) { exit(1); }
-    // key_gen(key_127);
-    // std::cout << "clef 127 bits : " << key_127[0] << ' ' << key_127[1] << std::endl;
-
-    // uint64_t* key_256 = (uint64_t*) calloc(4 , 64);
-    // if (key_256 == NULL) { exit(1); }
-
-    // std::cout << std::endl;
-    // std::cout << "EXPANSION DE CLEF" << std::endl;
-    // doubleKey(key_127, key_256);
-    // std::cout << "clef 256 bits : " << key_256[0] << ' ' << key_256[1] << ' ' << key_256[2] << ' ' << key_256[3] << std::endl;
-    // std::cout << std::endl;
-    // std::cout << "VERIFICATION VALEURS" << std::endl;
-    // std::cout << "vecteur initialisation 0 " << init_vect0[0] << ' ' << init_vect0[1] << std::endl;
-    // std::cout << "vecteur initialisation 1 " << init_vect0[0] << ' ' << init_vect0[1] << std::endl;
-    // std::cout << "clef 127 bits : " << key_127[0] << ' ' << key_127[1] << std::endl;
-    // std::cout << std::endl;
-    // std::cout << "DECLIN DE CLEF" << std::endl;
-    // inv_doubleKey(key_127, key_256);
-    // std::cout << std::endl;
-    // std::cout << "VERIFICATION VALEURS" << std::endl;
-    // std::cout << "vecteur initialisation 0 " << init_vect0[0] << ' ' << init_vect0[1] << std::endl;
-    // std::cout << "vecteur initialisation 1 " << init_vect0[0] << ' ' << init_vect0[1] << std::endl;
-    // std::cout << "clef 127 bits : " << key_127[0] << ' ' << key_127[1] << std::endl;
-    
-    // free(key_127); free(key_256);
 
     return 0;
 }
