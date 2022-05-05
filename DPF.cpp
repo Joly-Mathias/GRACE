@@ -16,7 +16,7 @@
 
 std::mt19937_64 gen;
 
-uint64_t power2[64] =
+uint64_t power2[65] =
 {
     0x0000000000000001U, 0x0000000000000002U, 0x0000000000000004U, 0x0000000000000008U,
     0x0000000000000010U, 0x0000000000000020U, 0x0000000000000040U, 0x0000000000000080U,
@@ -110,8 +110,8 @@ void inv_doubleKey(const uint64_t* key_128, const uint64_t* key_256, uint64_t* i
 
 void get_tLR(const uint64_t* sLR, int* tLR)
 {
-    tLR[0] = sLR[0] % 2; // tL
-    tLR[1] = sLR[1] % 2; // tR
+    tLR[0] = sLR[1] % 2; // tL
+    tLR[1] = sLR[3] % 2; // tR
 };
 
 void get_tCW(const uint64_t* key, const int input_bits, const int round, int* tCW)
@@ -122,11 +122,15 @@ void get_tCW(const uint64_t* key, const int input_bits, const int round, int* tC
     tCW[1] = temp % 2;
 };
 
-void put_tCW(uint64_t* key, const int input_bits, const int round, const int tLR)
+void put_tCW(uint64_t* key, const int input_bits, const int round, const int tCW)
 {
     int index = 2 + 2*(input_bits + 1) + (round / 32);
-    uint64_t factor = power2[2 * (32 - (round % 32))];
-    key[index] += tLR * factor;
+    uint64_t factor = power2[2 * (31 - (round % 32))];
+    key[index] += tCW * factor;
+    if (round == 64) 
+    { 
+        std::cout << key[index-1] << " " << key[index] << " = " << (tCW * factor) << std::endl;
+    }
 };
 
 void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, uint64_t* beta, const int beta_bits, uint64_t* key_0, uint64_t* key_1)
@@ -148,21 +152,7 @@ void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, uint6
     if (s_1 == NULL) { exit(1); }
     key_gen(s_1);
 
-    // std::cout << std::endl;
-    // std::cout << "IV0" << std::endl;
-    // std::cout << init_vect0[0] << ' ' << init_vect0[1] << std::endl;;
-    // std::cout << std::endl;
-    // std::cout << "IV1" << std::endl;
-    // std::cout << init_vect1[0] << ' ' << init_vect1[1] << std::endl;;
-
-    std::cout << "T_0 : 0 1" << std::endl;
-
-    // std::cout << std::endl;
-    // std::cout << "SEED de 0" << std::endl;
-    // std::cout << s_0[0] << ' ' << s_0[1] << std::endl;
-    // std::cout << std::endl;
-    // std::cout << "SEED de 1" << std::endl;
-    // std::cout << s_1[0] << ' ' << s_1[1] << std::endl;
+    // std::cout << "T_0 : 0 1" << std::endl;
 
     // Initialisation
     int t[2] = {0, 1};
@@ -188,18 +178,53 @@ void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, uint6
     if (sCW == NULL) { exit(1); }
 
     // Loop
-    for (int i = 1; i <= alpha_bits; i++)
+    for (int i = 0; i < alpha_bits; i++)
     {
-        // Seed expansion
+        // Seed expansion of s||0
+        s_0[1] &= 0xfffffffffffffffeU;
+        s_1[1] &= 0xfffffffffffffffeU;
+
+        // if (i == 63)
+        // {
+        //     std::cout << std::endl;
+        //     std::cout << "SEED " << i << " de 0" << std::endl;
+        //     std::cout << s_0[0] << ' ' << s_0[1] << std::endl;
+        //     std::cout << "T :" << t[0] << std::endl;
+        //     std::cout << "T_CW :" << tCW[0] << ' ' << tCW[1] << std::endl;
+        //     std::cout << "S_CW :" << sCW[0] << ' ' << (sCW[1] & 0xfffffffffffffffeU) << std::endl;
+        //     std::cout << std::endl;
+        //     std::cout << "SEED " << i << " de 1" << std::endl;
+        //     std::cout << s_1[0] << ' ' << s_1[1] << std::endl;
+        //     std::cout << "T :" << t[1] << std::endl;
+        //     std::cout << "T_CW :" << tCW[0] << ' ' << tCW[1] << std::endl;
+        //     std::cout << "S_CW :" << sCW[0] << ' ' << (sCW[1] & 0xfffffffffffffffeU) << std::endl;
+        // }
+
         doubleKey(s_0, sLR_0, init_vect0);
         doubleKey(s_1, sLR_1, init_vect1);
-
         get_tLR(sLR_0, tLR_0);
         get_tLR(sLR_1, tLR_1);
 
+        // if (i == 1) 
+        // {
+        //     std::cout << "0) " << sLR_0[0] << ' ' << sLR_0[1] << ' ' << sLR_0[2] << ' ' << sLR_0[3] << std::endl;
+        //     std::cout << "1) " << sLR_1[0] << ' ' << sLR_1[1] << ' ' << sLR_1[2] << ' ' << sLR_1[3] << std::endl;
+        // }
+        // if (i > alpha_bits - 2) 
+        // {
+        //     std::cout << "0) " << tLR_0[0] << ' ' << tLR_0[1] << std::endl;
+        //     std::cout << "1) " << tLR_1[0] << ' ' << tLR_1[1] << std::endl;
+        //     std::cout << "T_CW : " << tCW[0] << ' ' << tCW[1] << std::endl;
+        // }
+
         // Variables
-        int inv_alpha_i = (alpha[i/64] & power2[64 - i] == 0); // alpha_i XOR 1
+        int inv_alpha_i = ((alpha[i/64] & power2[63 - (i % 64)]) == 0); // alpha_i XOR 1
         if (inv_alpha_i == 1) { KEEP = 0; LOSE = 1; } else { KEEP = 1; LOSE = 0; } 
+        // if (i > alpha_bits - 3)
+        // {
+        //     std::cout << std::endl;
+        //     std::cout << "alpha " << i << " : "  << (1 - inv_alpha_i) << std::endl;
+        // }
 
         // Correcting words
         sCW[0] = sLR_0[LOSE * 2] ^ sLR_1[LOSE * 2];
@@ -207,16 +232,37 @@ void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, uint6
         tCW[0] = tLR_0[0] ^ tLR_1[0] ^ inv_alpha_i;
         tCW[1] = tLR_0[1] ^ tLR_1[1] ^ inv_alpha_i ^ 1; 
 
-        // Storage
-        key_0[2*(i+1)] = sCW[0];
-        key_0[2*(i+1)+1] = sCW[1];
+        // Store Correcting  Words
+        key_0[2*(i+2)] = sCW[0];
+        key_0[2*(i+2)+1] = sCW[1];
         put_tCW(key_0, alpha_bits, i, tCW[0]*2 + tCW[1]);
-        key_1[2*(i+1)] = sCW[0];
-        key_1[2*(i+1)+1] = sCW[1];
+        key_1[2*(i+2)] = sCW[0];
+        key_1[2*(i+2)+1] = sCW[1];
         put_tCW(key_1, alpha_bits, i, tCW[0]*2 + tCW[1]);
 
+        // if (i > alpha_bits - 2)
+        // {
+        //     std::cout << std::endl << "ROUND " << i  << " : " << power2[2 * (31 - ((i - 1) % 32))] << " : " << 2 * (31 - ((i - 1) % 32)) << std::endl;
+        //     int temp[2];
+        //     get_tCW(key_0, alpha_bits, i, temp);
+        //     std::cout << "T_CW : " << temp[0] << ' ' << temp[1] << " : KEY_0" << std::endl;
+        //     get_tCW(key_1, alpha_bits, i, temp);
+        //     std::cout << "T_CW : " << temp[0] << ' ' << temp[1] << " : KEY_1" << std::endl;
+        //     std::cout << "T_CW : " << tCW[0] << ' ' << tCW[1] << std::endl;
+        // }
+
+        // if (i == 64)
+        // {
+        //     std::cout << std::endl;
+        //     std::cout << "sLR final 0 : " << sLR_0[0] << ' ' << sLR_0[1] << ' ' << sLR_0[2] << ' ' << sLR_0[3] << std::endl;
+        //     std::cout << "sLR final 1 : " << sLR_1[0] << ' ' << sLR_1[1] << ' ' << sLR_1[2] << ' ' << sLR_1[3] << std::endl;
+        //     int temp[2];
+        //     get_tCW(key_0, alpha_bits, i, temp);
+        //     std::cout << "tCW final 0 : " << temp[0] << ' ' << temp[1] << std::endl;
+        //     get_tCW(key_1, alpha_bits, i, temp);
+        //     std::cout << "tCW final 1 : " << temp[0] << ' ' << temp[1] << std::endl;
+        // }
         // New seeds
-        
         s_0[0] = sLR_0[KEEP * 2];
         s_0[1] = sLR_0[KEEP * 2 + 1];
         if(t[0] == 1)
@@ -235,51 +281,47 @@ void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, uint6
             t[1] = tCW[KEEP] ;
         }
         t[1] ^= tLR_1[KEEP];
-
-        if(i < 3)
-        {
-            std::cout << "T_" << i << " CW : " << tCW[0] << " " << tCW[1] << std::endl;
-            std::cout << "T_" << i << " : " << t[0] << " " << t[1] << std::endl;
-            // std::cout << std::endl;
-            // std::cout << "SEED " << i << " de 0" << std::endl;
-            // std::cout << s_0[0] << ' ' << s_0[1] << std::endl;
-            // std::cout << std::endl;
-            // std::cout << "SEED " << i << " de 1" << std::endl;
-            // std::cout << s_1[0] << ' ' << s_1[1] << std::endl;
-        }
     }
 
+    // std::cout << std::endl;
+    // std::cout << "SEED final de 0" << std::endl;
+    // std::cout << s_0[0] << ' ' << s_0[1] << std::endl;
+    // std::cout << "T : " << t[0] << std::endl;
+    // std::cout << "T_CW :" << tCW[0] << ' ' << tCW[1] << std::endl;
+    // std::cout << "S_CW :" << sCW[0] << ' ' << (sCW[1] & 0xfffffffffffffffeU) << std::endl;
+    // std::cout << std::endl;
+    // std::cout << "SEED final de 1" << std::endl;
+    // std::cout << s_1[0] << ' ' << s_1[1] << std::endl;
+    // std::cout << "T : " << t[1] << std::endl;
+    // std::cout << "T_CW :" << tCW[0] << ' ' << tCW[1] << std::endl;
+    // std::cout << "S_CW :" << sCW[0] << ' ' << (sCW[1] & 0xfffffffffffffffeU) << std::endl;
+
     get_final_CW(beta, beta_bits, s_0, s_1, t[1]);
+    
     int deb = 2 + (alpha_bits+1)*2 + ((2*alpha_bits) / 64);
+    if ((2*alpha_bits) % 64 != 0) { deb ++; }
     int fin = deb + (beta_bits / 64);
-    if ((2*alpha_bits) % 64 != 0) { deb += 1; }
-    if (beta_bits % 64 != 0) { fin += 1; }
+    if (beta_bits % 64 != 0) { fin ++; }
     for (int i = deb; i < fin; i++)
     {
         uint64_t temp = beta[i-deb];
+        // std::cout << "CW final " << temp << std::endl;
         key_0[i] = temp;
         key_1[i] = temp;
     }
 
-    // std::cout << std::endl;
-    // std::cout << "IV0 final" << std::endl;
-    // std::cout << init_vect0[0] << ' ' << init_vect0[1] << std::endl;;
-    // std::cout << std::endl;
-    // std::cout << "IV1 final" << std::endl;
-    // std::cout << init_vect1[0] << ' ' << init_vect1[1] << std::endl;;
-    // std::cout << std::endl;
-    // std::cout << "IV0 clef" << std::endl;
-    // std::cout << key_0[0] << ' ' << key_0[1] << std::endl;;
-    // std::cout << std::endl;
-    // std::cout << "IV1 clef" << std::endl;
-    // std::cout << key_1[0] << ' ' << key_1[1] << std::endl;;
+    std::cout << std::endl;
+    std::cout << "fin KEY 0 : " << key_0[fin - 3] << ' ' << key_0[fin - 2] << ' ' << key_0[fin - 1] << std::endl;
+    std::cout << "BETA 0 : " << beta[0] << ' ' << beta[1] << std::endl;
+    std::cout << "fin KEY 1 : " << key_1[fin - 3] << ' ' << key_1[fin - 2] << ' ' << key_1[fin - 1] << std::endl;
+    std::cout << "BETA 1 : " << beta[0] << ' ' << beta[1] << std::endl;
 
     free(s_0); free(s_1); free(init_vect0); free(init_vect1); free(sLR_0); free(sLR_1); free(sCW);
 };
 
 void Eval(const uint64_t* input, const int input_bits, uint64_t* output, const int output_bits, const uint64_t* key, const int b)
 {
-    // Variables
+    // Initialisation
     int t = b;
     uint64_t* init_vect = (uint64_t*) calloc(2 , 64);
     if (init_vect == NULL) { exit(1); };
@@ -290,67 +332,92 @@ void Eval(const uint64_t* input, const int input_bits, uint64_t* output, const i
     s[0] = key[2];
     s[1] = key[3];
 
-    // if (b==0)
-    // {
-    //     std::cout << std::endl;
-    //     std::cout << "SEED de " << b << std::endl;
-    //     std::cout << s[0] << ' ' << s[1] << std::endl;
-    // }
+    // std::cout << "T_0 " << b << " : " << t << std::endl;
 
-    std::cout << "T_0 " << b << " : " << t << std::endl;
-
+    // Declaration of variables
     int tCW[2];
     uint64_t* sCW = (uint64_t*) calloc(2 , 64);;
     if (sCW == NULL) { exit(1); }
-    uint64_t* Tau = (uint64_t*) calloc(4 , 64);;
-    if (Tau == NULL) { exit(1); }
+    uint64_t* sLR = (uint64_t*) calloc(4 , 64);;
+    if (sLR == NULL) { exit(1); }
 
     // Loop
-    for (int i = 1; i <= input_bits; i++)
+    for (int i = 0; i < input_bits; i++)
     {
-        sCW[0] = key[2*(i+1)];
-        sCW[1] = key[2*(i+1)+1];
+        // Seed expansion of s||0
+        s[1] &= 0xfffffffffffffffeU;
+        // if (i == 63)
+        // {
+        //     std::cout << std::endl;
+        //     std::cout << "SEED " << i << " de " << b << std::endl;
+        //     std::cout << s[0] << ' ' << s[1] << std::endl;
+        //     std::cout << "T :" << t << std::endl;
+        //     std::cout << "T_CW :" << tCW[0] << ' ' << tCW[1] << std::endl;
+        //     std::cout << "S_CW :" << sCW[0] << ' ' << (sCW[1] & 0xfffffffffffffffeU) << std::endl;
+        // }
+
+        // Correcting Words
+        sCW[0] = key[2*(i+2)];
+        sCW[1] = key[2*(i+2)+1];
         get_tCW(key, input_bits, i, tCW);
 
-        doubleKey(s, Tau, init_vect);
+        // if (i < 3) 
+        // {
+        //     std::cout << b << ") " << sLR[0] << ' ' << sLR[1] << ' ' << sLR[2] << ' ' << sLR[3] << std::endl;
+        //     std::cout << b << ") " << (sLR[1] % 2) << ' ' << (sLR[3] % 2) << std::endl;
+        //     std::cout << b << ") " << ((sLR[1] % 2) ^ tCW[0]) << ' ' << ((sLR[3] % 2) ^tCW[1]) << std::endl;
+        // }
+
+        doubleKey(s, sLR, init_vect);
+
+        // if (i == 64)
+        // {
+        //     std::cout << std::endl;
+        //     std::cout << "sLR final " << b << " : " << sLR[0] << ' ' << sLR[1] << ' ' << sLR[2] << ' ' << sLR[3] << std::endl;
+        // }
 
         if (t==1)
         {
-            Tau[0] ^= sCW[0];
-            Tau[1] ^= (sCW[1] & 0xfffffffffffffffeU) ^ tCW[0];
-            Tau[2] ^= sCW[0];
-            Tau[3] ^= (sCW[1] & 0xfffffffffffffffeU) ^ tCW[1];
+            sLR[0] ^= sCW[0];
+            sLR[1] ^= (sCW[1] & 0xfffffffffffffffeU) ^ tCW[0];
+            sLR[2] ^= sCW[0];
+            sLR[3] ^= (sCW[1] & 0xfffffffffffffffeU) ^ tCW[1];
         }
 
-        int inv_input_i = (input[i/64] & power2[64 - i] == 0); // input_i XOR 1
+        int inv_input_i = ((input[i/64] & power2[63 - (i % 64)]) == 0); // input_i XOR 1
+        // if (i > input_bits - 3)
+        // {
+        //     std::cout << std::endl;
+        //     std::cout << "alpha " << i << " : "  << (1 - inv_input_i) << std::endl;
+        // }
+
+        // if (i == 64)
+        // {
+        //     std::cout << "sLR XOR sCW final " << b << " : " << sLR[0] << ' ' << sLR[1] << ' ' << sLR[2] << ' ' << sLR[3] << std::endl;
+        // }
         if (inv_input_i == 1)
         {
-            s[0] = Tau[0];
-            s[1] = Tau[1];
-            t = Tau[1] % 2;
+            // KEEP = 0, LOSE == 1
+            s[0] = sLR[0];
+            s[1] = sLR[1];
+            t = sLR[1] % 2;
         }
         else
         {
-            s[0] = Tau[2];
-            s[1] = Tau[3];
-            t = Tau[3] % 2;
+            // KEEP = 0, LOSE == 1
+            s[0] = sLR[2];
+            s[1] = sLR[3];
+            t = sLR[3] % 2;
         }   
-
-        if (i < 3)
-        {
-            std::cout << "T_" << i << " CW : " << tCW[0] << " " << tCW[1] << std::endl;
-            std::cout << "T_" << i << " " << b << " : " << t << std::endl;
-            // std::cout << std::endl;
-            // std::cout << "SEED " << i << " de " << b << std::endl;
-            // std::cout << s[0] << ' ' << s[1] << std::endl;
-        }
 
     }
 
-    int p = output_bits / 64;
-    int q = output_bits % 64;
-    int n = (input_bits + 1)*2 + ((2*input_bits) / 64);
-    if ((2 * input_bits) % 64 != 0) { n++; }
+    // std::cout << std::endl;
+    // std::cout << "SEED final de " << b << std::endl;
+    // std::cout << s[0] << ' ' << s[1] << std::endl;
+    // std::cout << "T : " << t << std::endl;
+    // std::cout << "T_CW :" << tCW[0] << ' ' << tCW[1] << std::endl;
+    // std::cout << "S_CW :" << sCW[0] << ' ' << (sCW[1] & 0xfffffffffffffffeU) << std::endl;
     convert(s, output, output_bits);
     // std::cout << std::endl;
     // std::cout << "GSEED" << b << std::endl;
@@ -360,9 +427,15 @@ void Eval(const uint64_t* input, const int input_bits, uint64_t* output, const i
     // }
     // std::cout << std::endl;
 
+    int p = output_bits / 64;
+    int q = output_bits % 64;
+    int deb = 2 + (input_bits+1)*2 + ((2*input_bits) / 64);
+    int fin = deb + p;
+    if ((2 * input_bits) % 64 != 0) { deb++; }
+    if (q != 0) { fin ++; }
     if (t == 1)
     {
-        add(output, (key + n), p, q);
+        add(output, (key + deb), p, q);
         // std::cout << std::endl;
         // std::cout << "CW + GSEED" << b << std::endl;
         // for (int i = 0; i < p; i++)
@@ -383,7 +456,17 @@ void Eval(const uint64_t* input, const int input_bits, uint64_t* output, const i
         // std::cout << std::endl;
     }
 
-    free(s); free(init_vect); free(Tau); free(sCW);
+    for (int i = deb; i < fin; i++)
+    {
+        uint64_t temp = output[i-deb];
+        // std::cout << "CW final de " << b << " " << temp << std::endl;
+    }
+
+    std::cout << std::endl;
+    std::cout << "fin KEY " << b << " : " << key[fin - 3] << ' ' << key[fin - 2] << ' ' << key[fin - 1] << std::endl;
+    std::cout << "BETA " << b << " : " << output[0] << ' ' << output[1] << std::endl;
+
+    free(s); free(init_vect); free(sLR); free(sCW);
 }
 
 int main(int argc, char **argv)
@@ -427,7 +510,6 @@ int main(int argc, char **argv)
         temp = *alpha_char != 0 ? *alpha_char++ : 0;
         alpha[p] ^= (uint64_t)temp << (56 - 8 * j);
     }
-    std::cout << std::endl << "alpha 1 : " << (alpha[0] >> 63) << std::endl;
 
     // Converting beta from char to uint64_t 
     // Left block incomplete : XXXXX110 10010111 01001011 
@@ -440,7 +522,8 @@ int main(int argc, char **argv)
     uint64_t* beta = (uint64_t*) calloc(n2, 64);
     if (beta==NULL) { exit(1); }
     std::cout << std::endl;
-    std::cout << "BETA" << std::endl;
+    std::cout << " - - - BETA - - -" << std::endl;
+    std::cout << std::endl;
     std::cout << beta_char << std::endl;
     for (int j = 0; j < q; j++)
     {
@@ -474,6 +557,8 @@ int main(int argc, char **argv)
     uint64_t* key_1 = (uint64_t*) calloc(n , 64);
     if (key_1 == NULL) { exit(1); }
 
+    std::cout << std::endl;
+    std::cout << " - - - GEN - - - " <<  std::endl;
     Gen(seed, alpha, alpha_bits, beta, beta_bits, key_0, key_1);
 
     // std::cout << std::endl;
@@ -491,6 +576,9 @@ int main(int argc, char **argv)
     // }
     // std::cout << std::endl;
 
+    std::cout << std::endl;
+    std::cout << " - - - EVAL 0 - - - " <<  std::endl;
+
     uint64_t* beta0 = (uint64_t*) calloc(n2, 64);
     if (beta0==NULL) { exit(1); }
     Eval(alpha, alpha_bits, beta0, beta_bits, key_0, 0);
@@ -501,6 +589,9 @@ int main(int argc, char **argv)
     //     std::cout << beta0[i] << ' ';
     // }
     // std::cout << std::endl;
+
+    std::cout << std::endl;
+    std::cout << " - - - EVAL 1 - - - " <<  std::endl;
 
     uint64_t* beta1 = (uint64_t*) calloc(n2, 64);
     if (beta1==NULL) { exit(1); }
@@ -514,7 +605,8 @@ int main(int argc, char **argv)
     // std::cout << std::endl;
 
     std::cout << std::endl;
-    std::cout << "XOR" << std::endl;
+    std::cout << " - - - XOR - - -" << std::endl;
+    std::cout << std::endl;
     for (int i = 0; i < n2; i++)
     {
         std::cout << (beta0[i] ^ beta1[i]) << ' ';
