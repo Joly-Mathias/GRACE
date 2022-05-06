@@ -83,7 +83,11 @@ void convert(const uint64_t* seed, uint64_t* g_seed, const int g_bits)
         g_seed[0] = seed[0];
         if (g_bits > 64)
         {
-            g_seed[1] = seed[1];
+            g_seed[1] = (seed[1] & 0xfffffffffffffffeU);
+        }
+        else
+        {
+            g_seed[0] &= 0xfffffffffffffffeU;
         }
     }
     else
@@ -129,9 +133,9 @@ void add(uint64_t* g1, const uint64_t* g2, const int p, const int q)
         uint64_t temp = g1[i-1];
         g1[i-1] = temp + retenue + g2[i-1];
         if (g1[i-1] < temp)
-        {
-            retenue = 1;
-        }     
+        { retenue = 1; }
+        else
+        { retenue = 0; }   
     }
     if ( deb == 1)
     {
@@ -154,18 +158,20 @@ void subtract(uint64_t* g1, const uint64_t* g2, const int p, const int q)
         uint64_t temp = g1[i-1];
         g1[i-1] = temp - retenue - g2[i-1];
         if (g1[i-1] > temp)
-        {
-            retenue = 1;
-        }     
+        { retenue = 1; }
+        else
+        { retenue = 0; }    
     }
     if ( deb == 1)
     {
         g1[0] = (g1[0] - retenue - g2[0]) & masks[64 - q];
     }
+    
 }
 
 void negative(uint64_t* g, const int p, const int q)
 {
+    uint64_t retenue = 1;
     int fin = p;
     int deb = 0;
     if (q != 0)
@@ -173,13 +179,23 @@ void negative(uint64_t* g, const int p, const int q)
         fin ++;
         deb ++;
     }
-    for (int i = fin; i > deb; i--)
+    if (g[fin-1] == 0)
     {
-        g[i-1] =  - g[i-1];    
+        retenue = 0;
+    }
+    g[fin-1] = - g[fin-1];
+    for (int i = fin-1; i > deb; i--)
+    {
+        uint64_t temp = g[i-1];
+        g[i-1] = - temp - retenue;
+        if (retenue == 0 && (temp != 0))
+        {
+            retenue = 1;
+        }  
     }
     if ( deb == 1)
     {
-        g[0] = (- g[0]) & masks[64 - q];
+        g[0] = (- g[0] - retenue) & masks[64 - q];
     }
 }
 
@@ -193,88 +209,19 @@ void get_final_CW(uint64_t* beta, const int beta_bits, const uint64_t* s0, const
     uint64_t* g_s0 = (uint64_t*) calloc(n, 64);
     if (g_s0==NULL) { exit(1); }
     convert(s0, g_s0, beta_bits);
-    // std::cout << std::endl;
-    // std::cout << "GSEED0" << std::endl;
-    // for (int i = 0; i < n; i++)
-    // {
-    //     std::cout << g_s0[i] << ' ';
-    // }
-    // std::cout << std::endl;
 
     uint64_t* g_s1 = (uint64_t*) calloc(n, 64);
     if (g_s1==NULL) { exit(1); }
     convert(s1, g_s1, beta_bits);
-    // std::cout << std::endl;
-    // std::cout << "GSEED1" << std::endl;
-    // for (int i = 0; i < n; i++)
-    // {
-    //     std::cout << g_s1[i] << ' ';
-    // }
-    // std::cout << std::endl;
 
-    add(beta, g_s0, p, q);
-    // std::cout << std::endl;
-    // std::cout << "BETA + GSEED0" << std::endl;
-    // for (int i = 0; i < n; i++)
-    // {
-    //     std::cout << beta[i] << ' ';
-    // }
-    // std::cout << std::endl;
-
-    subtract(beta, g_s1, p, q);
-    // std::cout << std::endl;
-    // std::cout << "BETA - GSEED1 + GSEED0" << std::endl;
-    // for (int i = 0; i < n; i++)
-    // {
-    //     std::cout << beta[i] << ' ';
-    // }
-    // std::cout << std::endl;
-
+    subtract(beta, g_s0, p, q);
+    add(beta, g_s1, p, q);
     if (t==1) 
     { 
         negative(beta, p, q);
-        // std::cout << std::endl;
-        // std::cout << "- 1  * (BETA - GSEED1 + GSEED0)" << std::endl;
-        // for (int i = 0; i < n; i++)
-        // {
-        //     std::cout << beta[i] << ' ';
-        // }
-        // std::cout << std::endl;
     }
 
     free(g_s0); free(g_s1);
 }
 
-// int main()
-// {
-//     uint64_t f[2];
-//     f[0] = 0x0000000000000003U;
-//     f[1] = 0x0000000000000003U;
-//     uint64_t g[2];
-//     g[0] = 0x0000000000000001U;
-//     g[1] = 0x0000000000000001U;
-//     uint64_t* h = (uint64_t*) calloc(4 , 64);
-//     if (h == NULL) { exit(1); }
-//     uint64_t* i = (uint64_t*) calloc(4 , 64);
-//     if (i == NULL) { exit(1); }
 
-//     int q = 3;
-//     int p = 1;
-//     std::cout << std::endl;
-//     std::cout << f[0] << ' ' << f[1] << std::endl;
-//     std::cout << g[0] << ' ' << g[1] << std::endl;
-//     std::cout << std::endl;
-//     concatenate(f, 64*p + q, g, 64*p + q, h);
-//     std::cout << h[0] << ' ' << h[1] << ' ' << h[2]  << ' ' << h[3] << std::endl;
-//     convert(f, i, 250);
-//     std::cout << i[0] << ' ' << i[1] << ' ' << i[2]  << ' ' << i[3] << std::endl;
-//     add(f,g,p,q);
-//     std::cout << f[0] << ' ' << f[1] << std::endl;
-//     subtract(f,g,p,q);
-//     std::cout << f[0] << ' ' << f[1] << std::endl;
-//     negative(g,p,q);
-//     std::cout << g[0] << ' ' << g[1] << std::endl;
-//     std::cout << std::endl;
-
-//     free(h); free(i);
-// }
