@@ -4,12 +4,12 @@
 # include <cstdlib>
 # include <cstdio>
 # include <cstring>
-
-// # include <emmintrin.h>
-// # include <smmintrin.h>
+# include <string>
+# include <fstream>
 
 # include "AES.hpp"
 # include "GROUP.hpp"
+# include "DPF.hpp"
 
 # define LAMBDA (127)
 # define KEYBITS (128)
@@ -221,6 +221,11 @@ void Gen(const uint64_t seed, const uint64_t* alpha, const int alpha_bits, uint6
         t[1] ^= tLR_1[KEEP];
     }
 
+    std::cout << std::endl;
+    std::cout << "FINAL SEEDS" << std::endl;
+    std::cout << s_0[0] << ' ' << s_0[1] << std::endl;
+    std::cout << s_1[0] << ' ' << s_1[1] << std::endl;
+
     get_final_CW(beta, beta_bits, s_0, s_1, t[1]);
     
     int deb = 2 + (alpha_bits+1)*2 + ((2*alpha_bits) / 64);
@@ -294,6 +299,10 @@ void Eval(const uint64_t* input, const int input_bits, uint64_t* output, const i
         }   
 
     }
+    
+    std::cout << std::endl;
+    std::cout << "FINAL SEED " << b << std::endl;
+    std::cout << s[0] << ' ' << s[1] << std::endl;
 
     convert(s, output, output_bits);
     
@@ -315,144 +324,205 @@ void Eval(const uint64_t* input, const int input_bits, uint64_t* output, const i
     free(s); free(init_vect); free(sLR); free(sCW);
 }
 
-int main(int argc, char **argv)
-{
-    // char mode = '0'; // NULL
-    // if (argc == 4) { mode = 'G'; } // Gen
-    // if (argc == 5) { mode = 'E'; } // Eval
-    // if (mode == '0') { std::cout << "Wrong number of arguments" << std::endl; return 1; }
+// int main(int argc, char **argv)
+// {
+//     // char mode = '0'; // NULL
+//     // if (argc == 4) { mode = 'G'; } // Gen
+//     // if (argc == 5) { mode = 'E'; } // Eval
+//     // if (mode == '0') { std::cout << "Wrong number of arguments" << std::endl; return 1; }
 
-    // Converting seed from char to uint64_bit
-    // The seed is composed of 8 ASCII characters stored on 8 bits
-    char* seed_char = argv[1];
-    uint64_t seed = 0x0000000000000000U;
-    uint8_t temp;
-    for (int i = 0; i < 8; i++)
-    {
-        temp = *seed_char != 0 ? *seed_char++ : 0;
-        seed ^= (uint64_t)temp << (56 - 8 * i);
-    }
+//     // Converting seed from char to uint64_bit
+//     // The seed is composed of 8 ASCII characters stored on 8 bits
+//     char* seed_char = argv[1];
+//     uint64_t seed = 0x0000000000000000U;
+//     uint8_t temp;
+//     for (int i = 0; i < 8; i++)
+//     {
+//         temp = *seed_char != 0 ? *seed_char++ : 0;
+//         seed ^= (uint64_t)temp << (56 - 8 * i);
+//     }
 
-    // Converting alpha from char to uint64_bit
-    // Right block incomplete : 11010010 11101001 011XXXXX  
-    char* alpha_char = argv[2];
-    int alpha_bits = strlen(alpha_char)*8;
-    int p = alpha_bits / 64;
-    int q = alpha_bits % 64;
-    int n1 = p ;
-    if (q != 0) { n1 += 1; }
-    uint64_t* alpha = (uint64_t*) calloc(n1, 64);
-    if (alpha==NULL) { exit(1); }
-    for (int i = 0; i < p; i++)
-    {
-        for (int j = 0 ; j < 8 ; j++)
-        {
-            temp = *alpha_char != 0 ? *alpha_char++ : 0;
-            alpha[i] ^= (uint64_t)temp << (56 - 8 * j);
-        }
-    }
-    for (int j = 0; j < q; j++)
-    {
-        temp = *alpha_char != 0 ? *alpha_char++ : 0;
-        alpha[p] ^= (uint64_t)temp << (56 - 8 * j);
-    }
+//     // Converting alpha from char to uint64_bit
+//     // Right block incomplete : 11010010 11101001 011XXXXX  
+//     char* alpha_char = argv[2];
+//     int alpha_bits = strlen(alpha_char)*8;
+//     int p = alpha_bits / 64;
+//     int q = alpha_bits % 64;
+//     int n1 = p ;
+//     if (q != 0) { n1 += 1; }
+//     uint64_t* alpha = (uint64_t*) calloc(n1, 64);
+//     if (alpha==NULL) { exit(1); }
+//     for (int i = 0; i < p; i++)
+//     {
+//         for (int j = 0 ; j < 8 ; j++)
+//         {
+//             temp = *alpha_char != 0 ? *alpha_char++ : 0;
+//             alpha[i] ^= (uint64_t)temp << (56 - 8 * j);
+//         }
+//     }
+//     for (int j = 0; j < q; j++)
+//     {
+//         temp = *alpha_char != 0 ? *alpha_char++ : 0;
+//         alpha[p] ^= (uint64_t)temp << (56 - 8 * j);
+//     }
 
-    // Converting beta from char to uint64_t 
-    // Left block incomplete : XXXXX110 10010111 01001011 
-    char* beta_char = argv[3];
-    int beta_bits = strlen(beta_char)*8;
-    p = beta_bits / 64;
-    q = beta_bits % 64;
-    int n2 = p ;
-    if (q != 0) { n2 += 1; }
-    uint64_t* beta = (uint64_t*) calloc(n2, 64);
-    if (beta==NULL) { exit(1); }
-    std::cout << std::endl;
-    std::cout << " - - - BETA - - -" << std::endl;
-    std::cout << std::endl << beta_char << std::endl;
-    for (int j = 0; j < q; j++)
-    {
-        temp = *beta_char != 0 ? *beta_char++ : 0;
-        beta[0] ^= (uint64_t)temp << 8 * ( q - j);
-    }
-    for (int i = 0; i < p; i++)
-    {
-        for (int j = 0 ; j < 8 ; j++)
-        {
-            temp = *beta_char != 0 ? *beta_char++ : 0;
-            beta[n2 - p + i] ^= (uint64_t)temp << (56 - 8 * j);
-        }
-    }
-    for (int i = 0; i < n2; i++)
-    {
-        std::cout << beta[i] << ' ';
-    }
-    std::cout << std::endl << std::endl;
+//     // Converting beta from char to uint64_t 
+//     // Left block incomplete : XXXXX110 10010111 01001011 
+//     char* beta_char = argv[3];
+//     int beta_bits = strlen(beta_char)*8;
+//     p = beta_bits / 64;
+//     q = beta_bits % 64;
+//     int n2 = p ;
+//     if (q != 0) { n2 += 1; }
+//     uint64_t* beta = (uint64_t*) calloc(n2, 64);
+//     if (beta==NULL) { exit(1); }
+//     std::cout << std::endl;
+//     std::cout << " - - - BETA - - -" << std::endl;
+//     std::cout << std::endl << beta_char << std::endl;
+//     for (int j = 0; j < q; j++)
+//     {
+//         temp = *beta_char != 0 ? *beta_char++ : 0;
+//         beta[0] ^= (uint64_t)temp << 8 * ( q - j);
+//     }
+//     for (int i = 0; i < p; i++)
+//     {
+//         for (int j = 0 ; j < 8 ; j++)
+//         {
+//             temp = *beta_char != 0 ? *beta_char++ : 0;
+//             beta[n2 - p + i] ^= (uint64_t)temp << (56 - 8 * j);
+//         }
+//     }
+//     for (int i = 0; i < n2; i++)
+//     {
+//         std::cout << beta[i] << ' ';
+//     }
+//     std::cout << std::endl << std::endl;
 
-    // KEY REPRESENTATION (right block incomplete):
-    // 128 bits for the initial vector
-    // (alphabits + 1) * 127 bits in order to store the root seed and the correction word seeds sCW
-    // 2*alpha_bits bits in order to store the values of tCW_L and tCW_R
-    // beta_bits bits in order to store the value of CW(n+1)
-    int n = 2 + (alpha_bits+1)*2 + ((2*alpha_bits) / 64) + p;
-    if ((2*alpha_bits) % 64 != 0) { n += 1; }
-    if (q != 0) { n += 1; }
-    uint64_t* key_0 = (uint64_t*) calloc(n , 64);
-    if (key_0 == NULL) { exit(1); }
-    uint64_t* key_1 = (uint64_t*) calloc(n , 64);
-    if (key_1 == NULL) { exit(1); }
+//     // KEY REPRESENTATION (right block incomplete):
+//     // 128 bits for the initial vector
+//     // (alphabits + 1) * 127 bits in order to store the root seed and the correction word seeds sCW
+//     // 2*alpha_bits bits in order to store the values of tCW_L and tCW_R
+//     // beta_bits bits in order to store the value of CW(n+1)
+//     int n = 2 + (alpha_bits+1)*2 + ((2*alpha_bits) / 64) + p;
+//     if ((2*alpha_bits) % 64 != 0) { n += 1; }
+//     if (q != 0) { n += 1; }
+//     uint64_t* key_0 = (uint64_t*) calloc(n , 64);
+//     if (key_0 == NULL) { exit(1); }
+//     uint64_t* key_1 = (uint64_t*) calloc(n , 64);
+//     if (key_1 == NULL) { exit(1); }
 
-    std::cout << " - - - GEN - - - " <<  std::endl;
-    Gen(seed, alpha, alpha_bits, beta, beta_bits, key_0, key_1);
+//     std::cout << " - - - GEN - - - " <<  std::endl;
+//     Gen(seed, alpha, alpha_bits, beta, beta_bits, key_0, key_1);
 
-    std::cout << std::endl;
-    // std::cout << "KEYS" << std::endl;
-    // for (int i = 0; i < n; i++)
-    // {
-    //     std::cout << key_0[i] << ' ' << key_1[i] << std::endl;
-    // }
-    std::cout << std::endl;
+//     std::ofstream output;
+//     output.open("key0.txt");
+//     for (int i = 0; i < n; i ++)
+//     {;
+//         uint64_t buffer = key_0[i];
+//         output << (buffer >> 32) << "\n" ;
+//         output << (buffer % 0x0000000100000000) << "\n" ;
+//     }
+//     output.close();
+//     std::cout << std::endl;
+//     output.open("key1.txt");
+//     for (int i = 0; i < n; i ++)
+//     {
+//         uint64_t buffer = key_1[i];
+//         output << (buffer >> 32) << "\n" ;
+//         output << (buffer % 0x0000000100000000) << "\n" ;
+//     }
+//     output.close();
 
-    std::cout << " - - - EVAL 0 - - - " <<  std::endl;
-    uint64_t* beta0 = (uint64_t*) calloc(n2, 64);
-    if (beta0==NULL) { exit(1); }
-    Eval(alpha, alpha_bits, beta0, beta_bits, key_0, 0);
-    std::cout << std::endl << "BETA (decoded by key0)" << std::endl;
-    for (int i = 0; i < n2; i++)
-    {
-        std::cout << beta0[i] << ' ';
-    }
-    std::cout << std::endl << std::endl;
+//     free(key_0); free(key_1);
 
-    std::cout << " - - - EVAL 1 - - - " <<  std::endl;
-    uint64_t* beta1 = (uint64_t*) calloc(n2, 64);
-    if (beta1==NULL) { exit(1); }
-    Eval(alpha, alpha_bits, beta1, beta_bits, key_1, 1);
-    std::cout << std::endl << "BETA (decoded by key1)" << std::endl;
-    for (int i = 0; i < n2; i++)
-    {
-        std::cout << beta1[i] << ' ';
-    }
-    std::cout << std::endl << std::endl;
+//     uint64_t* key0 = (uint64_t*) calloc(n , 64);
+//     if (key0 == NULL) { exit(1); }
+//     uint64_t* key1 = (uint64_t*) calloc(n , 64);
+//     if (key1 == NULL) { exit(1); }
 
-    std::cout << " - - - ADD - - -" << std::endl;
-    add(beta0, beta1, 2, 0);
-    std::cout << std::endl;
-    for (int i = 0; i < n2; i++)
-    {
-        std::cout << beta0[i] << ' ';
-    }
-    std::cout << std::endl;
-    for (int i = 0; i < n2; i++)
-    {
-        for (int j = 0; j < 8; j ++)
-        {
-            std::cout << (unsigned char) (beta0[i] >> (56 - 8*j));
-        }
-    }
-    std::cout << std::endl << std::endl;
+//     std::size_t pos{};
+//     std::ifstream key0_file ("key0.txt");
+//     std::string line;
+//     long long bloc;
+//     uint64_t buffer;
+//     if (key0_file.is_open())
+//     {
+//         int i = 0;
+//         while ( i < n )
+//         {
+//             getline(key0_file,line);
+//             bloc = std::stoll(line, &pos);
+//             buffer = bloc << 32;
+//             getline(key0_file,line);
+//             bloc = std::stoll(line, &pos);
+//             buffer += bloc;
+//             key0[i] = buffer ;
+//             i++;
+//         }
+//         key0_file.close();
+//     }
+//     std::ifstream key1_file ("key1.txt");
+//     if (key1_file.is_open())
+//     {
+//         int i = 0;
+//         while ( i < n )
+//         {
+//             getline(key1_file,line);
+//             bloc = std::stoll(line, &pos);
+//             buffer = bloc << 32;
+//             getline(key1_file,line);
+//             bloc = std::stoll(line, &pos);
+//             buffer += bloc;
+//             key1[i] = buffer ;
+//             i++;
+//         }
+//         key1_file.close();
+//     }
 
-    free(beta1); free(beta0); free(key_1); free(key_0); free(beta); free(alpha);
+//     std::cout << " - - - EVAL 0 - - - " <<  std::endl;
+//     uint64_t* beta0 = (uint64_t*) calloc(n2, 64);
+//     if (beta0==NULL) { exit(1); }
+//     Eval(alpha, alpha_bits, beta0, beta_bits, key0, 0);
+//     // beta0[0] = 10258214498830044237U;
+//     // beta0[1] = 650021188448858040;
+//     std::cout << std::endl << "BETA (decoded by key0)" << std::endl;
+//     for (int i = 0; i < n2; i++)
+//     {
+//         std::cout << beta0[i] << ' ';
+//     }
+//     std::cout << std::endl << std::endl;
 
-    return 0;
-}
+//     std::cout << " - - - EVAL 1 - - - " <<  std::endl;
+//     uint64_t* beta1 = (uint64_t*) calloc(n2, 64);
+//     if (beta1==NULL) { exit(1); }
+//     Eval(alpha, alpha_bits, beta1, beta_bits, key1, 1);
+//     // beta1[0] = 12800845742001501436U;
+//     // beta1[1] = 12278410181219059007U;
+//     std::cout << std::endl << "BETA (decoded by key1)" << std::endl;
+//     for (int i = 0; i < n2; i++)
+//     {
+//         std::cout << beta1[i] << ' ';
+//     }
+//     std::cout << std::endl << std::endl;
+
+//     std::cout << " - - - ADD - - -" << std::endl;
+//     add(beta0, beta1, 2, 0);
+//     std::cout << std::endl;
+//     for (int i = 0; i < n2; i++)
+//     {
+//         std::cout << beta0[i] << ' ';
+//     }
+//     std::cout << std::endl;
+//     for (int i = 0; i < n2; i++)
+//     {
+//         for (int j = 0; j < 8; j ++)
+//         {
+//             std::cout << (unsigned char) (beta0[i] >> (56 - 8*j));
+//         }
+//     }
+//     std::cout << std::endl << std::endl;
+
+//     free(beta1); free(beta0); free(key1); free(key0); free(beta); free(alpha);
+
+//     return 0;
+// }
