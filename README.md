@@ -4,22 +4,15 @@ Research internship project in Cryptography on Private Information Retrieval
 ## Code
 
 ### GMP Library
-download the GMP library from https://gmplib.org/
+download the GMP library from https://gmplib.org/  
+./configure --enable-cxx  
+make  
+make check  
+sudo make install  
 
-./configure --enable-cxx
-
-make
-
-make check
-
-sudo make install
-
-
-download the library libgmpxx
-
-export /usr/local/lib
-
-compile with additionnal libraries : -lgmpxx -lgmp
+download the library libgmpxx  
+export /usr/local/lib  
+compile with additionnal libraries : -lgmpxx -lgmp  
 
 ## Bibliography
 
