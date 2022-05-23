@@ -5,9 +5,12 @@
 # include <cstdio>
 # include <cstring>
 
+# include <gmp.h>
+# include <assert.h>
+
 # include "GROUP.hpp"
 
-std::mt19937_64 genG;
+gmp_randstate_t genG;
 
 uint64_t masks[64] = 
 {
@@ -30,198 +33,98 @@ uint64_t masks[64] =
 };
 
 // key <- key1 || key2 (left block incomplete)
-void concatenate(const uint64_t* key_1, const int n1, const uint64_t* key_2, const int n2, uint64_t* key)
+void concatenate(const mpz_t key_1, const int n1, const mpz_t key_2, const int n2, mpz_t key)
 {
-    int p1 = n1 / 64;
-    int q1 = n1 % 64;
-    int p2 = n2 / 64;
-    int q2 = n2 % 64;
-    uint64_t mask1 = masks[64-q1];
-    int init2 = (q2 != 0);
-    int init1 = (q1 != 0);
-    int init = (q1 + q2 > 64) ? 2 : 1 - (1 - init1)*(1 - init2);
-
-    for (int i = 0; i < p2; i++)
-    {
-        key[init + p1 + i] = key_2[init2 + i];
-    }
-    if (q2 == 0 )
-    {
-        for (int j = 0; j < p1; j++)
-        {
-            key[init + j] = key_1[init1 + j];
-        }
-        if (q1 > 0)
-        {
-            key[0] = key_1[0] & mask1;
-        }
-    }
-    else
-    {
-        uint64_t mask2 = masks[64 - q2];
-        key[init + p1 - 1] = (key_1[init1 + p1 - 1] << q2) ^ (key_2[0] & mask2);
-        for (int j = 0; j < p1 - 1; j++)
-        {
-            key[init + j] = ((key_1[init1 + j] << q2) ^ (key_1[init1 + j + 1] >> (64 - q2)));
-        }
-        key[init - 1] ^= (key_1[init1] >> (64 - q2));
-        if (p1 > 0 && init1 == 1)
-        {
-            key[init - 1] ^= key_1[0] << q2;
-        }
-        if (init == 2)
-        {
-            key[0] = (key_1[0] & mask1) >> (64 - (q1 + q2 % 64));
-        }
-    }
+    mpz_t offset;
+    mpz_init(offset);
+    mpz_ui_pow_ui(offset, 2, n2);
+    mpz_mul(key, key_1, offset);
+    mpz_add(key, key, key_2);
+    mpz_clear(offset);
 };
 
-void convert(const uint64_t* seed, uint64_t* g_seed, const int g_bits)
+void convert(const mpz_t seed, mpz_t g_seed, const int g_bits)
 {
-    if (g_bits <= 128)
+    if (g_bits < 128)
     {
-        g_seed[0] = seed[0];
-        if (g_bits > 64)
-        {
-            g_seed[1] = (seed[1] & 0xfffffffffffffffeU);
-        }
-        else
-        {
-            g_seed[0] &= 0xfffffffffffffffeU;
-        }
+        mpz_set(g_seed, seed);
     }
     else
     // it is rarely the case, we will make sure that the output size is equal or lower than lambda
     {
-        int n = g_bits / 64 ;
-        uint64_t* g_seed0 = (uint64_t*) calloc(n , 64);
-        if (g_seed0 == NULL) { exit(1); }
-        uint64_t* g_seed1 = (uint64_t*) calloc(n , 64);
-        if (g_seed1 == NULL) { exit(1); }
+        mpz_t g_seed0, g_seed1;
 
         int n0 = g_bits / 2 ;
         int n1 = n0;
         if (n0 % 2 == 1) { n1 += 1; }
-        genG.seed(seed[0]);
-        for (int i = 0; i < n; i++)
+        int p0 = n0 / 32;
+        int q0 = n0 % 32;
+        int p1 = n1 / 32;
+        int q1 = n1 % 32;
+        
+        gmp_randseed(genG, seed);
+        unsigned long buffer = 0;
+
+        mpz_init(g_seed0);
+        buffer = gmp_urandomb_ui(genG,32);
+        mpz_set_ui(g_seed0, buffer);
+        for (int i = 0; i < p0; i++)
         {
-            g_seed0[i] = genG();
+            mpz_mul_ui(g_seed0, g_seed0, 4294967296);
+            buffer = gmp_urandomb_ui(genG,32);
+            mpz_add_ui(g_seed0, g_seed0, buffer);
         }
-        genG.seed(seed[1]);
-        for (int i = 0; i < n; i++)
+        if (q0 != 0)
         {
-            g_seed1[i] = genG();
+            uint64_t mask = masks[64 - q0] * 2;
+            mpz_mul_ui(g_seed0, g_seed0, mask);
+            buffer = gmp_urandomb_ui(genG,32-q0);
+            mpz_add_ui(g_seed0, g_seed0, buffer);
         }
+
+        mpz_init(g_seed1);
+        buffer = gmp_urandomb_ui(genG,32);
+        mpz_set_ui(g_seed1, buffer);
+        for (int i = 0; i < (n1 / 32); i++)
+        {
+            mpz_mul_ui(g_seed1, g_seed1, 4294967296);
+            buffer = gmp_urandomb_ui(genG,32);
+            mpz_add_ui(g_seed1, g_seed1, buffer);
+        }
+        if (q1 != 0)
+        {
+            uint64_t mask = masks[64 - q1] * 2;
+            mpz_mul_ui(g_seed1, g_seed1, mask);
+            buffer = gmp_urandomb_ui(genG,32-q1);
+            mpz_add_ui(g_seed1, g_seed1, buffer);
+        }
+
         concatenate(g_seed0, n0, g_seed1, n1, g_seed);
         
-        free(g_seed0); free(g_seed1); 
+        mpz_clear(g_seed0); mpz_clear(g_seed1); 
     }
 }
 
-void add(uint64_t* g1, const uint64_t* g2, const int p, const int q)
+void get_final_CW(mpz_t beta, const int beta_bits, const mpz_t s0, const mpz_t s1, const int t)
 {
-    uint64_t retenue = 0;
-    int fin = p;
-    int deb = 0;
-    if (q != 0)
-    {
-        fin ++;
-        deb ++;
-    }
-    for (int i = fin; i > deb; i--)
-    {
-        uint64_t temp = g1[i-1];
-        g1[i-1] = temp + retenue + g2[i-1];
-        if (g1[i-1] < temp)
-        { retenue = 1; }
-        else
-        { retenue = 0; }   
-    }
-    if ( deb == 1)
-    {
-        g1[0] = (g1[0] + retenue + g2[0]) & masks[64 - q];
-    }
-}
-
-void subtract(uint64_t* g1, const uint64_t* g2, const int p, const int q)
-{
-    uint64_t retenue = 0;
-    int fin = p;
-    int deb = 0;
-    if (q != 0)
-    {
-        fin ++;
-        deb ++;
-    }
-    for (int i = fin; i > deb; i--)
-    {
-        uint64_t temp = g1[i-1];
-        g1[i-1] = temp - retenue - g2[i-1];
-        if (g1[i-1] > temp)
-        { retenue = 1; }
-        else
-        { retenue = 0; }    
-    }
-    if ( deb == 1)
-    {
-        g1[0] = (g1[0] - retenue - g2[0]) & masks[64 - q];
-    }
-    
-}
-
-void negative(uint64_t* g, const int p, const int q)
-{
-    uint64_t retenue = 1;
-    int fin = p;
-    int deb = 0;
-    if (q != 0)
-    {
-        fin ++;
-        deb ++;
-    }
-    if (g[fin-1] == 0)
-    {
-        retenue = 0;
-    }
-    g[fin-1] = - g[fin-1];
-    for (int i = fin-1; i > deb; i--)
-    {
-        uint64_t temp = g[i-1];
-        g[i-1] = - temp - retenue;
-        if (retenue == 0 && (temp != 0))
-        {
-            retenue = 1;
-        }  
-    }
-    if ( deb == 1)
-    {
-        g[0] = (- g[0] - retenue) & masks[64 - q];
-    }
-}
-
-void get_final_CW(uint64_t* beta, const int beta_bits, const uint64_t* s0, const uint64_t* s1, const int t)
-{
-    int p = beta_bits / 64;
-    int q = beta_bits % 64;
-    int n = p ;
-    if (q != 0) { n++; }
-
-    uint64_t* g_s0 = (uint64_t*) calloc(n, 64);
-    if (g_s0==NULL) { exit(1); }
+    mpz_t g_s0, g_s1;
+    mpz_init(g_s0);
     convert(s0, g_s0, beta_bits);
-
-    uint64_t* g_s1 = (uint64_t*) calloc(n, 64);
-    if (g_s1==NULL) { exit(1); }
+    mpz_init(g_s1);
     convert(s1, g_s1, beta_bits);
 
-    subtract(beta, g_s0, p, q);
-    add(beta, g_s1, p, q);
+    mpz_t power2;
+    mpz_init(power2);
+    mpz_ui_pow_ui(power2, 2, beta_bits);
+
+    mpz_sub(beta, beta, g_s0);
+    mpz_mod(beta, beta, power2);
+    mpz_add(beta, beta, g_s1);
+    mpz_mod(beta, beta, power2);
     if (t==1) 
     { 
-        negative(beta, p, q);
+        mpz_sub(beta, power2, beta);
     }
 
-    free(g_s0); free(g_s1);
+    mpz_clear(g_s0); mpz_clear(g_s1); mpz_clear(power2);
 }
-
-
