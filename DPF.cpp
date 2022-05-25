@@ -36,73 +36,29 @@ void key_gen(mpz_t seed_127)
 
 void doubleKey(const mpz_t key_127, mpz_t key_256, mpz_t init_vect)
 {
-    // Round Keys
+    // Variables
     uint32_t rk[44];
-    mpz_t key_128;
-    mpz_init(key_128);
-    mpz_mul_ui(key_128, key_127, 2);
-    int nrounds = expandEncryptKey(rk, key_128, 128);    
-
-    // AES encryption
-    mpz_t cipher;
-    mpz_init(cipher);
+    mpz_t key_128, cipher, power2_128;
+    mpz_init(key_128); mpz_init(cipher); mpz_init(power2_128);
+    mpz_ui_pow_ui(power2_128, 2, 128); // 2^128
     int check_bits;
 
-    mpz_add_ui(init_vect, init_vect, 1);
+    // Operations
+    mpz_mul_ui(key_128, key_127, 2); // s||0
+    int nrounds = expandEncryptKey(rk, key_128, 128); // Round Keys  
+    encryptAES(rk, nrounds, init_vect, cipher); // 1er AES
+    mpz_mul(key_256, cipher, power2_128);
+    mpz_add_ui(init_vect, init_vect, 1); // IV incrementation
     check_bits = mpz_sizeinbase(init_vect, 2);
     if (check_bits == 129) { mpz_set_ui(init_vect,0); }
-    encryptAES(rk, nrounds, init_vect, cipher);
-    mpz_xor(key_256, key_128, cipher);
-
-    mpz_t buffer;
-    mpz_init(buffer);
-    mpz_ui_pow_ui(buffer, 2, 128); // 2^128
-    mpz_mul(key_256, key_256, buffer);
-
-    mpz_add_ui(init_vect, init_vect, 1);
+    encryptAES(rk, nrounds, init_vect, cipher); // 2e AES
+    mpz_add(key_256, key_256, cipher);
+    mpz_add_ui(init_vect, init_vect, 1); // IV incrementation
     check_bits = mpz_sizeinbase(init_vect, 2);
     if (check_bits == 129) { mpz_set_ui(init_vect,0); }
-    encryptAES(rk, nrounds, init_vect, cipher);
-    mpz_xor(buffer, key_128, cipher);
-    
-    mpz_add(key_256, key_256, buffer);
 
-    mpz_clear(key_128); mpz_clear(cipher); mpz_clear(buffer);
-};
-
-void inv_doubleKey(const mpz_t key_127, const mpz_t key_256, mpz_t init_vect)
-{
-    // Round Keys
-    uint32_t rk[44];
-    mpz_t key_128;
-    mpz_init(key_128);
-    mpz_mul_ui(key_128, key_127, 2);
-    int nrounds = expandEncryptKey(rk, key_128, 128); 
-    std::cout << "key 128 " << key_128 << std::endl;
-  
-    // AES encryption
-    mpz_t cipher;
-    mpz_init(cipher);
-
-    mpz_t buffer;
-    mpz_init(buffer);
-    mpz_ui_pow_ui(buffer, 2, 128); // 2^128
-
-    encryptAES(rk, nrounds, init_vect, cipher);
-    if (mpz_cmp_ui(init_vect,0) == 0) { mpz_sub_ui(init_vect, buffer, 1); }
-    else { mpz_sub_ui(init_vect, init_vect, 1); }
-    mpz_fdiv_r(key_128, key_256, buffer);
-    mpz_xor(key_128, key_128, cipher);
-    std::cout << "key 128 " << key_128 << std::endl;
-
-    encryptAES(rk, nrounds, init_vect, cipher);
-    if (mpz_cmp_ui(init_vect,0)) { mpz_sub_ui(init_vect, buffer, 1); }
-    else { mpz_sub_ui(init_vect, init_vect, 1); } 
-    mpz_fdiv_q(key_128, key_256, buffer);
-    mpz_xor(key_128, key_128, cipher);
-    std::cout << "key 128 " << key_128 << std::endl;
-
-    mpz_clear(cipher); mpz_clear(buffer); mpz_clear(key_128);
+    // Memory space
+    mpz_clear(key_128); mpz_clear(cipher); mpz_clear(power2_128);
 };
 
 void get_tLR(mpz_t sLR, int* tLR)

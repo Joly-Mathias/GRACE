@@ -47,7 +47,11 @@ void convert(const mpz_t seed, mpz_t g_seed, const int g_bits)
 {
     if (g_bits < 128)
     {
-        mpz_set(g_seed, seed);
+        mpz_t power2;
+        mpz_init(power2);
+        mpz_ui_pow_ui(power2, 2, g_bits);
+        mpz_mod(g_seed, seed, power2);
+        mpz_clear(power2);
     }
     else
     // it is rarely the case, we will make sure that the output size is equal or lower than lambda
