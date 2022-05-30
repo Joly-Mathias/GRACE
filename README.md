@@ -35,11 +35,35 @@ A. Beimel, Y. Ishai, T. Malkin (2000). Reducing the Servers Computation in Priva
 
 H. Corrigan-Gibbs, D. Kogan (2020). Private Information Retrieval with Sublinear Online Time. In: Canteaut, A., Ishai, Y. (eds) Advances in Cryptology – EUROCRYPT 2020. EUROCRYPT 2020. Lecture Notes in Computer Science(), vol 12105. Springer, Cham. https://doi.org/10.1007/978-3-030-45721-1_3
 
-### Reading
-
 E. Boyle, N. Gilboa and Y. Ishai (2019). Secure Computation with Preprocessing via Function Secret Sharing. In: Cryptology ePrint Archive, Report 2019/1095. https://ia.cr/2019/1095
 
+### Reading
+
+O. Goldreich and R. Ostrovsky. Software Protection and Simulation on Oblivious RAMs. Journal of the ACM, 1996
+
+A. Hamlin and M. Varia (2020). Two-server Distributed ORAM with Sublinear Computation and Constant Rounds. Cryptology ePrint Archive
+
+J. Doerner and A. Shelat (2017) Scaling ORAM for Secure Computation. Cryptology ePrint Archive
+
 ### To read
+
+#### Oblivious RAM
+
+E. Stefanov, M. van Dijk, E. Shi, T-H. H. Chan, C. Fletcher, L. Ren. X. Yu. S. Devadas (2013). Path ORAM : An extremely Simple Oblivious RAM Protocol
+
+M.T. Goodrich and M. Mitzenmacher. Privacy-preserving access of out-sourced data via oblivious RAM simulation. Proceedings of ICALP 2011
+
+B. Pinkas ans T. Reinman. Oblivious RAM revisited. Crypto 2010
+
+E. Shi, T-H H. Chan, E. Stefanov and M Li. Oblivious RAM with O((log N)^3 ) worst-case cost. Proceedings of Asiacrypt 2011, pp.197-214, 2011
+
+#### PIR
+
+A. Beimel, Y. Ishai and T. Malkin (2004). Reducing the servers’ computation in Private Information Retrieval : PIR with preprocessing. Journal of Cryptology, 17(2), pp.125-151, 2004.
+
+C. Devet, I. Goldberg and N. Heninger (2012). Optimally Robust Private Information Retrieval. 21st USENIX Security symposium, 2012
+
+C. Devet and I. Goldberg (2014). The best of both worlds : combining IT- and C-PIR for communication efficiency. Privacy Enhanced Technologies (PETs) 2014.
 
 A. Ambainis (1996). Upper bound on the communication complexity of private information retrieval. In: Degano, P., Gorrieri, R., Marchetti-Spaccamela, A. (eds) Automata, Languages and Programming. ICALP 1997. Lecture Notes in Computer Science, vol 1256. Springer, Berlin, Heidelberg. https://doi.org/10.1007/3-540-63165-8_196
 
