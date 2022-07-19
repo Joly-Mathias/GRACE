@@ -34,7 +34,9 @@ int main(int argc, char **argv)
     infilename[3] = b;
     std::ifstream key_file (infilename);
     
-    mpz_t key[input_bits + 3];
+    mpz_t* key = (mpz_t *) malloc((input_bits + 3)*sizeof(mpz_t));
+    if(key == NULL) { std::cout << "Erreur d'allocation de mémoire" << std::endl; exit(0); }
+
     if (key_file.is_open())
     {
         for (int i = 0; i < input_bits + 3; i ++)
@@ -47,8 +49,8 @@ int main(int argc, char **argv)
 
     Eval(input, input_bits, output, output_bits, key, (b-48));
 
-    std::cout << std::endl << "BETA " << b << std::endl;
-    std::cout << output << std::endl << std::endl;
+    // std::cout << " - - - BETA " << b << " - - - " << std::endl ;
+    // std::cout << output << std::endl << std::endl;
 
     std::ofstream beta_file;
     std::string betafilename = "betaX.txt";
@@ -63,7 +65,7 @@ int main(int argc, char **argv)
     mpz_clear(input); mpz_clear(output);
     for (int i = 0; i < input_bits + 3; i ++) { mpz_clear(key[i]); }
   
-//    free(key);
+    free(key);
 
     return 0;
 }

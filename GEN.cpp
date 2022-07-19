@@ -32,6 +32,7 @@ int main(int argc, char **argv)
     flag = mpz_set_str(alpha, alpha_char, 2);
     assert (flag == 0); 
  
+    // std::cout <<  std::endl << " - - - BETA - - - " << std::endl;
     char* beta_char = argv[3];
     int beta_bits = strlen(beta_char);
     mpz_t beta;
@@ -39,14 +40,14 @@ int main(int argc, char **argv)
     mpz_set_ui(beta,0);
     flag = mpz_set_str(beta, beta_char, 2);
     assert (flag == 0); 
+    // std::cout << beta << std::endl << std::endl;
 
     mpz_t* key_0 = (mpz_t *) malloc((alpha_bits + 3)*sizeof(mpz_t));
+    if(key_0 == NULL) { std::cout << "Erreur d'allocation de mémoire" << std::endl; exit(0); }
     mpz_t* key_1 = (mpz_t *) malloc((alpha_bits + 3)*sizeof(mpz_t));
+    if(key_1 == NULL) { std::cout << "Erreur d'allocation de mémoire" << std::endl; exit(0); }
 
-    std::cout <<  std::endl << beta <<  std::endl << std::endl;
-    std::cout <<  std::endl << " - - - GEN - - - " <<  std::endl << std::endl;
     Gen(seed, alpha, alpha_bits, beta, beta_bits, key_0, key_1);
-    std::cout <<  std::endl ;
     mpz_clear(seed); mpz_clear(alpha); mpz_clear(beta);
   
     std::ofstream key_file;

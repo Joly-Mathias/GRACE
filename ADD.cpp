@@ -37,6 +37,8 @@ int main(int argc, char **argv)
         beta1_file.close();
     }
 
+    std::cout << std::endl << "-------------------" << std::endl << std::endl;
+
     std::cout << " - - - BETA 0 - - -" << std::endl;
     std::cout << beta0 << std::endl << std::endl;
 

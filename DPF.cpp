@@ -61,6 +61,47 @@ void doubleKey(const mpz_t key_127, mpz_t key_256, mpz_t init_vect)
     mpz_clear(key_128); mpz_clear(cipher); mpz_clear(power2_128);
 };
 
+void convert(const mpz_t seed, const int g_bits, mpz_t g_seed, mpz_t init_vect)
+{
+    mpz_t power2; mpz_init(power2); mpz_ui_pow_ui(power2, 2, g_bits);
+    int p = g_bits / 128; int q = g_bits % 128;
+    if (p == 0) { mpz_set(g_seed, seed); }
+    else 
+    {
+        // Variables
+        uint32_t rk[44];
+        mpz_t key_128, cipher, power2_128;
+        mpz_init(key_128); mpz_init(cipher); mpz_init(power2_128);
+        mpz_ui_pow_ui(power2_128, 2, 128); // 2^128
+        int check_bits;
+
+        // Operations
+        mpz_mul_ui(key_128, seed, 2); // s||0
+        int nrounds = expandEncryptKey(rk, key_128, 128); // Round Keys  
+        if (q > 0) { p += 1;}
+        while(p > 0)
+        {
+            encryptAES(rk, nrounds, init_vect, cipher);
+            mpz_add(g_seed, g_seed, cipher);
+            mpz_mul(g_seed, g_seed, power2_128);
+            mpz_add_ui(init_vect, init_vect, 1);
+            check_bits = mpz_sizeinbase(init_vect, 2);
+            if (check_bits == 129) { mpz_set_ui(init_vect,0); }
+            p -= 1;
+        }
+        encryptAES(rk, nrounds, init_vect, cipher);
+        mpz_add(g_seed, g_seed, cipher);
+        mpz_add_ui(init_vect, init_vect, 1);
+        check_bits = mpz_sizeinbase(init_vect, 2);
+        if (check_bits == 129) { mpz_set_ui(init_vect,0); }
+
+        // Memory space
+        mpz_clear(key_128); mpz_clear(cipher); mpz_clear(init_vect);
+    }
+    mpz_mod(g_seed, g_seed, power2);
+    mpz_clear(power2);
+};
+
 void get_tLR(mpz_t sLR, int* tLR)
 {
     tLR[0] = mpz_tstbit(sLR, 128U); // tL
@@ -78,7 +119,7 @@ void Gen(const mpz_t seed, const mpz_t alpha, const int alpha_bits, mpz_t beta, 
     mpz_init(init_vect0);
     key_gen(init_vect0);
     mpz_init(init_vect1);
-    key_gen(init_vect1);
+    mpz_set(init_vect1, init_vect0);
     mpz_init(s_0);
     key_gen(s_0);
     mpz_init(s_1);
@@ -96,6 +137,7 @@ void Gen(const mpz_t seed, const mpz_t alpha, const int alpha_bits, mpz_t beta, 
     mpz_set(key_1[1], s_1);
 
     // Declaration of variables : L == 0 , R == 1
+    int threshold = alpha_bits - mpz_sizeinbase(alpha, 2);
     int alpha_i;
     mpz_t sLR_0, sLR_1, sCW;
     mpz_init(sLR_0);
@@ -119,12 +161,15 @@ void Gen(const mpz_t seed, const mpz_t alpha, const int alpha_bits, mpz_t beta, 
         get_tLR(sLR_1, tLR_1);
 
         // Variables
-        alpha_i = mpz_tstbit(alpha, alpha_bits - 1 - i);
+        if (i < threshold) { alpha_i = 0; } 
+        else { alpha_i = mpz_tstbit(alpha, alpha_bits - 1 - i); }
+        
         tCW[0] = tLR_0[0] ^ tLR_1[0] ^ alpha_i ^ 1;
         tCW[1] = tLR_0[1] ^ tLR_1[1] ^ alpha_i;
         mpz_xor(sCW, sLR_0, sLR_1);
         if (alpha_i == 0) { mpz_fdiv_r(sCW, sCW, power2_128); } 
         else { mpz_fdiv_q(sCW, sCW, power2_128); }
+        //mpz_mod(sCW, sCW, power2_128);
         mpz_fdiv_q_ui(sCW, sCW, 2);
 
         // Store Correcting  Words
@@ -146,6 +191,8 @@ void Gen(const mpz_t seed, const mpz_t alpha, const int alpha_bits, mpz_t beta, 
             mpz_fdiv_r(s_0, sLR_0, power2_128);
             mpz_fdiv_r(s_1, sLR_1, power2_128);
         }
+        //mpz_mod(s_0, s_0, power2_128);
+        //mpz_mod(s_1, s_1, power2_128);
         mpz_fdiv_q_ui(s_0, s_0, 2);
         mpz_fdiv_q_ui(s_1, s_1, 2);
         if (t[0] == 1)
@@ -169,27 +216,26 @@ void Gen(const mpz_t seed, const mpz_t alpha, const int alpha_bits, mpz_t beta, 
     std::cout << std::endl;
     mpz_out_str(stdout,2,s_1);
     std::cout << std::endl;
-    */
-
+    
     mpz_t power2;
     mpz_init(power2);
     mpz_ui_pow_ui(power2, 2, beta_bits);
+    */
 
-    mpz_mod(s_0, s_0, power2);
-    mpz_mod(s_1, s_1, power2);
+    convert(s_0, beta_bits, s_0, init_vect0);
+    convert(s_1, beta_bits, s_1, init_vect0);
 
-    mpz_sub(beta, beta, s_0);
-    mpz_mod(beta, beta, power2);
-    mpz_add(beta, beta, s_1);
-    mpz_mod(beta, beta, power2);
-    if (t[1]==1) { mpz_sub(beta, power2, beta); }
+    mpz_xor(beta, beta, s_0);
+    mpz_xor(beta, beta, s_1);
+    //if (t[1]==1) { mpz_sub(beta, power2, beta); mpz_mod(beta, beta, power2);}
     
     mpz_init(key_0[alpha_bits + 2]);
     mpz_set(key_0[alpha_bits + 2], beta);
+    mpz_init(key_1[alpha_bits + 2]);
     mpz_set(key_1[alpha_bits + 2], beta);
 
     mpz_clear(init_vect0); mpz_clear(init_vect1);
-    mpz_clear(power2_128); mpz_clear(power2);
+    mpz_clear(power2_128); // mpz_clear(power2);
     mpz_clear(s_0); mpz_clear(s_1);
     mpz_clear(sLR_0); mpz_clear(sLR_1); mpz_clear(sCW);
 };
@@ -205,6 +251,7 @@ void Eval(const mpz_t input, const int input_bits, mpz_t output, const int outpu
     mpz_set(s, key[1]);
 
     // Declaration of variables
+    int threshold = input_bits - mpz_sizeinbase(input, 2);
     int input_i;
     mpz_t CW, CW_LR, sLR;
     mpz_init(CW);
@@ -235,9 +282,13 @@ void Eval(const mpz_t input, const int input_bits, mpz_t output, const int outpu
         if (t==1) { mpz_xor(sLR, sLR, CW_LR); }
 
         // Next node
-        input_i = mpz_tstbit(input, input_bits - 1 - i);
-        if (input_i == 0) { mpz_fdiv_q(s, sLR, power2_128); mpz_fdiv_r(s, s, power2_128); } else { mpz_fdiv_r(s, sLR, power2_128); }
-        t = mpz_tstbit(s, 0);   
+        if (i < threshold) { input_i = 0; } 
+        else { input_i = mpz_tstbit(input, input_bits - 1 - i); }
+
+        if (input_i == 0) { mpz_fdiv_q(s, sLR, power2_128); mpz_fdiv_r(s, s, power2_128); } 
+        else { mpz_fdiv_r(s, sLR, power2_128); }
+        //mpz_mod(s, s, power2_128); 
+        t = mpz_tstbit(s, 0);  
         mpz_fdiv_q_ui(s, s, 2);
     }
     
@@ -250,17 +301,19 @@ void Eval(const mpz_t input, const int input_bits, mpz_t output, const int outpu
 
     mpz_clear(init_vect); mpz_clear(sLR); mpz_clear(CW); mpz_clear(CW_LR);
 
+    /*
     mpz_t power2;
     mpz_init(power2);
     mpz_ui_pow_ui(power2, 2, output_bits);
+    */
 
-    mpz_mod(s, s, power2);
+    convert(s, output_bits, s, init_vect) ;
 
     mpz_set(output,s);
-    if (t == 1) { mpz_add(output, output, key[input_bits+2]); }
-    if (b == 1) { mpz_sub(output, power2, output); mpz_mod(output, output, power2); }
+    if (t == 1) { mpz_xor(output, output, key[input_bits+2]); }
+    // if (b == 1) { mpz_sub(output, power2, output); }
 
-    mpz_clear(s); mpz_clear(power2); mpz_clear(power2_128);
+    mpz_clear(s); mpz_clear(power2_128); // mpz_clear(power2);
 }
 
 /*

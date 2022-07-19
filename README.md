@@ -37,19 +37,24 @@ H. Corrigan-Gibbs, D. Kogan (2020). Private Information Retrieval with Sublinear
 
 E. Boyle, N. Gilboa and Y. Ishai (2019). Secure Computation with Preprocessing via Function Secret Sharing. In: Cryptology ePrint Archive, Report 2019/1095. https://ia.cr/2019/1095
 
-### Reading
+E. Stefanov, M. van Dijk, E. Shi, T-H. H. Chan, C. Fletcher, L. Ren. X. Yu. S. Devadas (2013). Path ORAM : An extremely Simple Oblivious RAM Protocol
 
 O. Goldreich and R. Ostrovsky. Software Protection and Simulation on Oblivious RAMs. Journal of the ACM, 1996
 
 A. Hamlin and M. Varia (2020). Two-server Distributed ORAM with Sublinear Computation and Constant Rounds. Cryptology ePrint Archive
 
-J. Doerner and A. Shelat (2017) Scaling ORAM for Secure Computation. Cryptology ePrint Archive
+B. Chor, N. Gilboa, and M. Naor (1997). Private Information Retrieval by Keywords.TR CS0917, Department of Computer Science, Technion https://www.cs.bgu.ac.il/~gilboan/publications/PERKY.pdf
+
+
+### Reading
+
+A. Beimel and Y. Ishai (2001) Information-theoretic private information retrieval: a unified construction. In P. G. Spirakis and J. van Leeuven, editors, Proc. of the 28th Internat. Colloq. on Automata, Languages and Programming, volume 2076 of Lecture Notes in Computer Science, pages 912–926. Springer-Verlag, Berlin, https://doi.org/10.1007/3-540-48224-5_74
 
 ### To read
 
 #### Oblivious RAM
 
-E. Stefanov, M. van Dijk, E. Shi, T-H. H. Chan, C. Fletcher, L. Ren. X. Yu. S. Devadas (2013). Path ORAM : An extremely Simple Oblivious RAM Protocol
+J. Doerner and A. Shelat (2017) Scaling ORAM for Secure Computation. Cryptology ePrint Archive
 
 M.T. Goodrich and M. Mitzenmacher. Privacy-preserving access of out-sourced data via oblivious RAM simulation. Proceedings of ICALP 2011
 
@@ -69,8 +74,6 @@ A. Ambainis (1996). Upper bound on the communication complexity of private infor
 
 Y. Gertner, Y. Ishai, E. Kushilevitz, and T. Malkin (1997). Protecting Data Privacy in
 Private Information Retrieval Schemes. In Proceedings of the thirtieth annual ACM symposium on Theory of computing (STOC '98). Association for Computing Machinery, New York, NY, USA, 151–160. DOI:https://doi.org/10.1145/276698.276723
-
-B. Chor, N. Gilboa, and M. Naor (1997). Private Information Retrieval by Keywords.TR CS0917, Department of Computer Science, Technion https://www.cs.bgu.ac.il/~gilboan/publications/PERKY.pdf
 
 F. Olumofin and I. Goldberg (2011). Revisiting the computational practicality of private information retrieval. In Financial Cryptography and Data Security, pages 158–172. https://doi.org/10.1007/978-3-642-27576-0_13
 
