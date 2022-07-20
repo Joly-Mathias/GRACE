@@ -59,8 +59,8 @@ int main()
 
 	mpz_t* DB = (mpz_t *) malloc(n*sizeof(mpz_t));
     std::string infilename = "DB.txt"; 
-	std::string outfilename = "DB_32.txt";
-	//std::string outfilename = "DB_256.txt";
+	//std::string outfilename = "DB_32.txt";
+	std::string outfilename = "DB_256.txt";
     std::ifstream DB_file (infilename); std::ofstream hDB_file (outfilename);
 	char URL[16];
     mpz_t hURL; mpz_init(hURL);
@@ -70,8 +70,8 @@ int main()
 		for(i=0; i<n; i++)
 		{
 			DB_file >> URL;
-			sha32(URL, hURL);
-			//sha256(URL, hURL);
+			//sha32(URL, hURL);
+			sha256(URL, hURL);
 			mpz_init(DB[i]);
 			mpz_set(DB[i], hURL);
 		}

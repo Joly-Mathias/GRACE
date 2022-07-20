@@ -6,8 +6,10 @@
 # include <cstring>
 # include <string>
 # include <fstream>
+# include <vector>
 
 # include <gmp.h>
+# include <gmpxx.h>
 # include <assert.h>
 
 # include "AES.hpp"
@@ -16,199 +18,171 @@
 # define LAMBDA (127)
 # define KEYBITS (128)
 
+/*
 gmp_randstate_t gen;
 
-void key_gen(mpz_t seed_127)
+void key_gen(mpz_class seed_127)
 {
     unsigned long buffer = 0;
     buffer = gmp_urandomb_ui(gen,32);
-    mpz_set_ui(seed_127, buffer);
-    mpz_mul_ui(seed_127, seed_127, 4294967296);
+    seed_127 = buffer;
     buffer = gmp_urandomb_ui(gen,32);
-    mpz_add_ui(seed_127, seed_127, buffer);
-    mpz_mul_ui(seed_127, seed_127, 4294967296);
+    seed_127 = (seed_127 << 32) + buffer;
     buffer = gmp_urandomb_ui(gen,32);
-    mpz_add_ui(seed_127, seed_127, buffer);
-    mpz_mul_ui(seed_127, seed_127, 2147483648);
+    seed_127 = (seed_127 << 32) + buffer;
     buffer = gmp_urandomb_ui(gen,31);
-    mpz_add_ui(seed_127, seed_127, buffer);
+    seed_127 = (seed_127 << 31) + buffer;
 };
+*/
 
-void doubleKey(const mpz_t key_127, mpz_t key_256, mpz_t init_vect)
+mpz_class doubleKey(const mpz_class key_127, mpz_class init_vect)
 {
     // Variables
     uint32_t rk[44];
-    mpz_t key_128, cipher, power2_128;
-    mpz_init(key_128); mpz_init(cipher); mpz_init(power2_128);
-    mpz_ui_pow_ui(power2_128, 2, 128); // 2^128
-    int check_bits;
+    mpz_class key_128, cipher, key_256;
+    mpz_class power2_128(1); power2_128 = power2_128 << 128;
 
     // Operations
-    mpz_mul_ui(key_128, key_127, 2); // s||0
+    key_128 = key_127 << 1; // s||0
     int nrounds = expandEncryptKey(rk, key_128, 128); // Round Keys  
-    encryptAES(rk, nrounds, init_vect, cipher); // 1er AES
-    mpz_mul(key_256, cipher, power2_128);
-    mpz_add_ui(init_vect, init_vect, 1); // IV incrementation
-    check_bits = mpz_sizeinbase(init_vect, 2);
-    if (check_bits == 129) { mpz_set_ui(init_vect,0); }
-    encryptAES(rk, nrounds, init_vect, cipher); // 2e AES
-    mpz_add(key_256, key_256, cipher);
-    mpz_add_ui(init_vect, init_vect, 1); // IV incrementation
-    check_bits = mpz_sizeinbase(init_vect, 2);
-    if (check_bits == 129) { mpz_set_ui(init_vect,0); }
+    cipher = encryptAES(rk, nrounds, init_vect); // 1er AES
+    key_256 = cipher;
+    init_vect = (init_vect + 1) % power2_128; // IV incrementation
+    cipher = encryptAES(rk, nrounds, init_vect); // 2e AES
+    key_256 = (key_256 << 128) + cipher;
 
-    // Memory space
-    mpz_clear(key_128); mpz_clear(cipher); mpz_clear(power2_128);
+    return key_256;
 };
 
-void convert(const mpz_t seed, const int g_bits, mpz_t g_seed, mpz_t init_vect)
+mpz_class convert(const mpz_class seed, const int g_bits, mpz_class init_vect)
 {
-    mpz_t power2; mpz_init(power2); mpz_ui_pow_ui(power2, 2, g_bits);
+    mpz_class g_seed;
+    mpz_class power2(1);  power2 = power2 << g_bits;
     int p = g_bits / 128; int q = g_bits % 128;
-    if (p == 0) { mpz_set(g_seed, seed); }
+    if (p == 0) { g_seed = seed; }
     else 
     {
         // Variables
         uint32_t rk[44];
-        mpz_t key_128, cipher, power2_128;
-        mpz_init(key_128); mpz_init(cipher); mpz_init(power2_128);
-        mpz_ui_pow_ui(power2_128, 2, 128); // 2^128
-        int check_bits;
+        mpz_class key_128, cipher;
+        mpz_class power2_128(1); power2_128 = power2_128 << 128;
 
         // Operations
-        mpz_mul_ui(key_128, seed, 2); // s||0
-        int nrounds = expandEncryptKey(rk, key_128, 128); // Round Keys  
+        key_128 = seed << 1; // s||0
+        int nrounds = expandEncryptKey(rk, key_128, 128); 
         if (q > 0) { p += 1;}
+        cipher = encryptAES(rk, nrounds, init_vect);
+        g_seed = cipher;
+        p -= 1;
         while(p > 0)
         {
-            encryptAES(rk, nrounds, init_vect, cipher);
-            mpz_add(g_seed, g_seed, cipher);
-            mpz_mul(g_seed, g_seed, power2_128);
-            mpz_add_ui(init_vect, init_vect, 1);
-            check_bits = mpz_sizeinbase(init_vect, 2);
-            if (check_bits == 129) { mpz_set_ui(init_vect,0); }
+            init_vect = (init_vect + 1) % power2_128;
+            cipher = encryptAES(rk, nrounds, init_vect);
+            g_seed = (g_seed << 128) + cipher;
             p -= 1;
         }
-        encryptAES(rk, nrounds, init_vect, cipher);
-        mpz_add(g_seed, g_seed, cipher);
-        mpz_add_ui(init_vect, init_vect, 1);
-        check_bits = mpz_sizeinbase(init_vect, 2);
-        if (check_bits == 129) { mpz_set_ui(init_vect,0); }
-
-        // Memory space
-        mpz_clear(key_128); mpz_clear(cipher); mpz_clear(init_vect);
     }
-    mpz_mod(g_seed, g_seed, power2);
-    mpz_clear(power2);
+    g_seed = g_seed % power2;
+    //std::cout << seed << " mod " << power2 << " = " << g_seed << std::endl;
+    return g_seed;
 };
 
-void get_tLR(mpz_t sLR, int* tLR)
+void get_tLR(mpz_class sLR, int* tLR)
 {
-    tLR[0] = mpz_tstbit(sLR, 128U); // tL
-    tLR[1] = mpz_tstbit(sLR, 0U); // tR
+    tLR[0] = mpz_tstbit(sLR.get_mpz_t(), 128U); // tL
+    tLR[1] = mpz_tstbit(sLR.get_mpz_t(), 0U); // tR
 };
 
-void Gen(const mpz_t seed, const mpz_t alpha, const int alpha_bits, mpz_t beta, const int beta_bits, mpz_t* key_0, mpz_t* key_1)
+void Gen(const mpz_class seed, const mpz_class alpha, const int alpha_bits, mpz_class beta, const int beta_bits, std::vector<mpz_class>& key_0, std::vector<mpz_class>& key_1)
 {
     // Seeding mersene random generator
-    gmp_randinit_mt(gen);   
-    gmp_randseed(gen, seed);
+    gmp_randclass gen(gmp_randinit_mt);
+    gen.seed(seed);
 
     // Generating four random seeds
-    mpz_t init_vect0, init_vect1, s_0, s_1;
-    mpz_init(init_vect0);
-    key_gen(init_vect0);
-    mpz_init(init_vect1);
-    mpz_set(init_vect1, init_vect0);
-    mpz_init(s_0);
-    key_gen(s_0);
-    mpz_init(s_1);
-    key_gen(s_1);
+    mpz_class init_vect0, init_vect1, s_0, s_1;
+    init_vect0 = gen.get_z_bits(127);
+    init_vect1 = init_vect0;
+    s_0 = gen.get_z_bits(127);
+    s_1 = gen.get_z_bits(127);
 
     // Initialisation
     int t[2] = {0, 1};
-    mpz_init(key_0[0]);
-    mpz_set(key_0[0], init_vect0);
-    mpz_init(key_1[0]);
-    mpz_set(key_1[0], init_vect1);
-    mpz_init(key_0[1]);
-    mpz_set(key_0[1], s_0);
-    mpz_init(key_1[1]);
-    mpz_set(key_1[1], s_1);
+    key_0.push_back(init_vect0);
+    key_1.push_back(init_vect1);
+    key_0.push_back(s_0);
+    key_1.push_back(s_1);
 
     // Declaration of variables : L == 0 , R == 1
-    int threshold = alpha_bits - mpz_sizeinbase(alpha, 2);
+    int threshold = alpha_bits - mpz_sizeinbase(alpha.get_mpz_t(), 2);
     int alpha_i;
-    mpz_t sLR_0, sLR_1, sCW;
-    mpz_init(sLR_0);
-    mpz_init(sLR_1);
-    mpz_init(sCW);
+    mpz_class sLR_0, sLR_1, sCW, buffer;
     int tLR_0[2];
     int tLR_1[2];
     int tCW[2];
 
-    mpz_t power2_128;
-    mpz_init(power2_128);
-    mpz_ui_pow_ui(power2_128, 2, 128); // 2^128
+    mpz_class power2_128(1); power2_128 = power2_128 << 128; // 2^128
 
     // Loop
     for (int i = 0; i < alpha_bits; i++)
     {
         // Seed expansion of s||0
-        doubleKey(s_0, sLR_0, init_vect0);
-        doubleKey(s_1, sLR_1, init_vect1);
+        // std::cout << s_0 << std::endl;
+        sLR_0 = doubleKey(s_0, init_vect0);
+        sLR_1 = doubleKey(s_1, init_vect1);
+        init_vect0 = (init_vect0 + 2) % power2_128;
+        init_vect1 = (init_vect1 + 2) % power2_128;
         get_tLR(sLR_0, tLR_0);
         get_tLR(sLR_1, tLR_1);
+        std::cout << (sLR_0 >> 128) << ' ' << tLR_0[0] << ' ' << (sLR_0 % power2_128) << ' ' << tLR_0[1] << std::endl;
+        std::cout << (sLR_1 >> 128) << ' ' << tLR_1[0] << ' ' << (sLR_1 % power2_128) << ' ' << tLR_1[1] << std::endl;
 
         // Variables
         if (i < threshold) { alpha_i = 0; } 
-        else { alpha_i = mpz_tstbit(alpha, alpha_bits - 1 - i); }
+        else { alpha_i = mpz_tstbit(alpha.get_mpz_t(), alpha_bits - 1 - i); }
+        std::cout << alpha_i << std::endl << std::endl;
         
         tCW[0] = tLR_0[0] ^ tLR_1[0] ^ alpha_i ^ 1;
         tCW[1] = tLR_0[1] ^ tLR_1[1] ^ alpha_i;
-        mpz_xor(sCW, sLR_0, sLR_1);
-        if (alpha_i == 0) { mpz_fdiv_r(sCW, sCW, power2_128); } 
-        else { mpz_fdiv_q(sCW, sCW, power2_128); }
-        //mpz_mod(sCW, sCW, power2_128);
-        mpz_fdiv_q_ui(sCW, sCW, 2);
+        //std::cout << i << " : " << t[0] << std::endl << i << " : " << t[1] << std::endl;
+        //std::cout << i << " : " << tCW[0] << ' ' << tCW[1] << std::endl;
+
+        sCW = sLR_0 ^ sLR_1;
+        if (alpha_i == 0) { sCW = sCW % power2_128; } // RIGHT
+        else { sCW = sCW >> 128; } // LEFT
+        sCW = sCW >> 1;
 
         // Store Correcting  Words
-        mpz_init(key_0[i+2]);
-        mpz_mul_ui(key_0[i+2], sCW, 4);
-        mpz_add_ui(key_0[i+2], key_0[i+2], 2*tCW[0] + tCW[1]);
-        mpz_init(key_1[i+2]);
-        mpz_mul_ui(key_1[i+2], sCW, 4);
-        mpz_add_ui(key_1[i+2], key_1[i+2], 2*tCW[0] + tCW[1]);
+        buffer = (sCW << 2) + (2*tCW[0] + tCW[1]);
+        key_0.push_back(buffer);
+        key_1.push_back(buffer);
 
         // Next nodes
         if (alpha_i == 0) 
         { 
-            mpz_fdiv_q(s_0, sLR_0, power2_128);
-            mpz_fdiv_q(s_1, sLR_1, power2_128);
+            s_0 = sLR_0 >> 128;
+            s_1 = sLR_1 >> 128;
         } 
         else 
         {  
-            mpz_fdiv_r(s_0, sLR_0, power2_128);
-            mpz_fdiv_r(s_1, sLR_1, power2_128);
+            s_0 = sLR_0 % power2_128;
+            s_1 = sLR_1 % power2_128;
         }
-        //mpz_mod(s_0, s_0, power2_128);
-        //mpz_mod(s_1, s_1, power2_128);
-        mpz_fdiv_q_ui(s_0, s_0, 2);
-        mpz_fdiv_q_ui(s_1, s_1, 2);
+        s_0 = s_0 >> 1;
+        s_1 = s_1 >> 1;
         if (t[0] == 1)
         {
-            mpz_xor(s_0, s_0, sCW);
+            s_0 = s_0 ^ sCW;
             t[0] = tCW[alpha_i];
         }
         t[0] ^= tLR_0[alpha_i];
         if (t[1] == 1)
         {
-            mpz_xor(s_1, s_1, sCW);
+            s_1 = s_1 ^ sCW;
             t[1] = tCW[alpha_i];
         }
         t[1] ^= tLR_1[alpha_i];
     }
-
     /*
     std::cout << std::endl;
     std::cout << "FINAL SEEDS" << std::endl;
@@ -217,140 +191,110 @@ void Gen(const mpz_t seed, const mpz_t alpha, const int alpha_bits, mpz_t beta, 
     mpz_out_str(stdout,2,s_1);
     std::cout << std::endl;
     
-    mpz_t power2;
+    mpz_class power2;
     mpz_init(power2);
     mpz_ui_pow_ui(power2, 2, beta_bits);
     */
 
-    convert(s_0, beta_bits, s_0, init_vect0);
-    convert(s_1, beta_bits, s_1, init_vect0);
+    //std::cout << s_0 << ' ' << s_1 << std::endl;
+    //std::cout << t[0] << " ^ " << t[1] << " = " << (t[0]^t[1]) << std::endl;
+    s_0 = convert(s_0, beta_bits, init_vect0);
+    s_1 = convert(s_1, beta_bits, init_vect1); 
+    // std::cout << "7 : " << t[0] << std::endl << "7 : " << s_0 << std::endl << "7 : " << t[1] << std::endl << "7 : " << s_1 << std::endl;
+    //std::cout << s_0 << ' ' << s_1 << std::endl;
 
-    mpz_xor(beta, beta, s_0);
-    mpz_xor(beta, beta, s_1);
+    beta = beta ^ s_0;
+    beta = beta ^ s_1;
     //if (t[1]==1) { mpz_sub(beta, power2, beta); mpz_mod(beta, beta, power2);}
-    
-    mpz_init(key_0[alpha_bits + 2]);
-    mpz_set(key_0[alpha_bits + 2], beta);
-    mpz_init(key_1[alpha_bits + 2]);
-    mpz_set(key_1[alpha_bits + 2], beta);
 
-    mpz_clear(init_vect0); mpz_clear(init_vect1);
-    mpz_clear(power2_128); // mpz_clear(power2);
-    mpz_clear(s_0); mpz_clear(s_1);
-    mpz_clear(sLR_0); mpz_clear(sLR_1); mpz_clear(sCW);
+    key_0.push_back(beta);
+    key_1.push_back(beta);
 };
 
-void Eval(const mpz_t input, const int input_bits, mpz_t output, const int output_bits, const mpz_t* key, const int b)
+mpz_class Eval(const mpz_class input, const int input_bits, const int output_bits, const std::vector<mpz_class>& key, const int b)
 {
     // Initialisation
     int t = b;
-    mpz_t init_vect, s;
-    mpz_init(init_vect);
-    mpz_set(init_vect, key[0]);
-    mpz_init(s);
-    mpz_set(s, key[1]);
+    mpz_class init_vect, s, output;
+    init_vect = key[0];
+    s = key[1];
 
     // Declaration of variables
-    int threshold = input_bits - mpz_sizeinbase(input, 2);
+    int threshold = input_bits - mpz_sizeinbase(input.get_mpz_t(), 2);
     int input_i;
-    mpz_t CW, CW_LR, sLR;
-    mpz_init(CW);
-    mpz_init(CW_LR);
-    mpz_init(sLR);
-    int tCW_R;
+    mpz_class CW, CW_LR, sLR;
+    int tCW_L, tCW_R;
 
-    mpz_t power2_128;
-    mpz_init(power2_128);
-    mpz_ui_pow_ui(power2_128, 2, 128); // 2^128
+    mpz_class power2_128(1); power2_128 = power2_128 << 128; // 2^128
+
+    //if (input == 64) { std::cout << input << " : " << t  << ' ' << s << std::endl; }
 
     // Loop
     for (int i = 0; i < input_bits; i++)
     {
         // Correcting Words
-        mpz_set(CW, key[i+2]);
-        tCW_R = mpz_tstbit(CW,0);
-        mpz_fdiv_q_ui(CW, CW, 2);
-        mpz_mul(CW_LR, CW, power2_128);
-        mpz_add(CW_LR, CW_LR, CW);
-        mpz_clrbit(CW_LR, 0);
-        mpz_add_ui(CW_LR, CW_LR, tCW_R);
+        CW = key[i+2];
+        tCW_L = mpz_tstbit(CW.get_mpz_t(),128);
+        tCW_R = mpz_tstbit(CW.get_mpz_t(),0);
+
+        CW = (CW >> 2) << 1;
+        CW_LR = ((CW + tCW_L) << 128) + (CW + tCW_R);
 
         // Seed expansion of s||0
-        doubleKey(s, sLR, init_vect);
+        // if (input == 11) {std::cout << s << std::endl;}
+        sLR = doubleKey(s, init_vect);
+        if (input == 64) 
+        { 
+            //std::cout << i << " : " << t << std::endl;
+            //std::cout << i << " : " << tCW_L << ' ' << tCW_R << std::endl;
+            std::cout << (sLR >> 128) << ' ' << (sLR % power2_128) << std::endl; 
+        }
+        init_vect = (init_vect + 2) % power2_128; // IV incrementation
         
         // Tau
-        if (t==1) { mpz_xor(sLR, sLR, CW_LR); }
+        if (t==1) { sLR = sLR ^ CW_LR; }
 
         // Next node
         if (i < threshold) { input_i = 0; } 
-        else { input_i = mpz_tstbit(input, input_bits - 1 - i); }
+        else { input_i = mpz_tstbit(input.get_mpz_t(), input_bits - 1 - i); }
 
-        if (input_i == 0) { mpz_fdiv_q(s, sLR, power2_128); mpz_fdiv_r(s, s, power2_128); } 
-        else { mpz_fdiv_r(s, sLR, power2_128); }
-        //mpz_mod(s, s, power2_128); 
-        t = mpz_tstbit(s, 0);  
-        mpz_fdiv_q_ui(s, s, 2);
+        if (input_i == 0) { s = sLR >> 128; } // LEFT
+        else { s = sLR % power2_128; } // RIGHT
+        t = mpz_tstbit(s.get_mpz_t(), 0);  
+        s = s >> 1;
+        if (input == 64) { std::cout << input_i << std::endl << std::endl; }
     }
+
+    // std::cout << input << " : " << s << std::endl;
     
-    /*
-    std::cout << std::endl;
-    std::cout << "FINAL SEED " << b << std::endl;
-    mpz_out_str(stdout,2,s);
-    std::cout << std::endl;
-    */
 
-    mpz_clear(init_vect); mpz_clear(sLR); mpz_clear(CW); mpz_clear(CW_LR);
+    s = convert(s, output_bits, init_vect) ;
+    //if (input == 64) { std::cout << "7 : " << t << std::endl << "7 : " << s << std::endl ; }
 
-    /*
-    mpz_t power2;
-    mpz_init(power2);
-    mpz_ui_pow_ui(power2, 2, output_bits);
-    */
-
-    convert(s, output_bits, s, init_vect) ;
-
-    mpz_set(output,s);
-    if (t == 1) { mpz_xor(output, output, key[input_bits+2]); }
+    output = s;
+    if (t == 1) 
+    { 
+        output = output ^ key[input_bits+2]; 
+        //if (input == 64) { std::cout << input << " : " << output << ' ' << s << std::endl; }
+    }
     // if (b == 1) { mpz_sub(output, power2, output); }
 
-    mpz_clear(s); mpz_clear(power2_128); // mpz_clear(power2);
+    return output;
 }
 
 /*
 int main(int argc, char **argv)
 {
     std::cout << std::endl;
-    int flag;
-    char* seed_char = argv[1];
-    mpz_t seed;
-    mpz_init(seed);
-    mpz_set_ui(seed,0);
-    flag = mpz_set_str(seed, seed_char, 2);
-    assert (flag == 0);
-    std::cout << "key 127 " ;
-    mpz_out_str(stdout, 10, seed);
-    std::cout << std::endl << mpz_sizeinbase(seed, 2) << " bits" << std::endl << std::endl;
+    mpz_class seed(123);
+    std::cout << "key 127 " << seed << std::endl << mpz_sizeinbase(seed.get_mpz_t(), 2) << " bits" << std::endl << std::endl;
 
-    char* vect_char = argv[2];
-    mpz_t vect;
-    mpz_init(vect);
-    mpz_set_ui(vect,0);
-    flag = mpz_set_str(vect, vect_char, 2);
-    assert (flag == 0);
-    std::cout << "vect " ;
-    mpz_out_str(stdout, 10, vect);
-    std::cout << std::endl  << mpz_sizeinbase(vect, 2) << " bits" << std::endl << std::endl;
+    mpz_class vect(11);
+    std::cout << "vect " << vect << std::endl  << mpz_sizeinbase(vect.get_mpz_t(), 2) << " bits" << std::endl << std::endl;
 
-    mpz_t seed2;
-    mpz_init(seed2);
-    doubleKey(seed, seed2, vect);
-    std::cout << "key 256 " ;
-    mpz_out_str(stdout, 10, seed2);
-    std::cout << std::endl  << mpz_sizeinbase(seed2, 2) << " bits" << std::endl << std::endl;
+    mpz_class seed2; seed2 = doubleKey(seed, vect);
+    std::cout << "key 256 " << seed2 << std::endl  << mpz_sizeinbase(seed2.get_mpz_t(), 2) << " bits" << std::endl << std::endl;
 
-    inv_doubleKey(seed, seed2, vect);
-
-    mpz_clear(seed); mpz_clear(vect); mpz_clear(seed2);
     return 0;    
 }
 */

@@ -1,0 +1,25 @@
+\hline  &  & $\sqrt{n}/q$ & $\sqrt{n}/q$ & $n/q$ & \\ CK20 & $\sqrt{n}$ & + & + & + & 0 \\ & & $\sqrt{n}$ & $\sqrt{n}$ & $\sqrt{n}$ & \\
+
+\textbf{Remarque} : la transmission d'un ensemble $\mathcal{E}_j $ demande $O(\sqrt{n})$ bits, mais on peut réduire ce coût à $O(log(n))$ bits en utilisant des PPRS\footnote{la section 4 détaille la construction d'un PPRS} (\textit{puncturable pseudorandom set}).
+
+Le client peut réutiliser le pré-calcul de la phase \textit{offline} pour exécuter $q$ requêtes dans la phase \textit{online}, ce qui amortit le coût total des serveurs en $O(n/q + \sqrt{n})$.
+
+\footnote{Dans l'article \cite{CK20} un schéma est $\epsilon$-secure si aucun adversaire efficace ne peut distinguer le schéma de l'aléatoire avec un avantage supérieur à $\epsilon(\lambda,n)$ ($\lambda$ étant le paramètre de sécurité)} 
+
+\begin{figure}[h]
+\tiny
+\begin{tabular}{|C{1.6cm}|C{1.6cm}|C{1.6cm}|C{1.6cm}|C{1.6cm}|C{1.6cm}||}
+\hline Article \newline & Extra stockage client & Coût client \vspace{1pt} & Coût communication & Coût serveur \vspace{1pt} & Extra stockage serveur \\
+\hline  CG97 & $0$ & $n^\epsilon$ & $n^\epsilon$ & $n$ & $0$ \\
+\hline  BIM04 & $0$ & $n^{\epsilon}$ & $n^\epsilon$ & $n^{1/2 + \epsilon}$ & $n^{3/2 + \epsilon}$ \\
+\hline  BGI16 & $0$ & $log(n)$ & $log(n)$ & $n$ & $0$ \\
+\hline  &  & $\sqrt{n} \cdot log(n)$ & $\sqrt{n} \cdot log(n)$ & $n \cdot log(n)$ & \\ CK20 & $\sqrt{n} \cdot log(n)$ & + & + & + & 0 \\ & & $\sqrt{n} \cdot log(n)$ & $log(n)$ & $\sqrt{n} \cdot log(n)$ & \\
+\hline 
+\end{tabular}
+\caption{Coûts des protocoles de CPIR à 2 serveurs} \label{fig:tab}
+\end{figure}
+
+\vspace{5pt}
+\textbf{Correction} Pour tout $n \in \mathbb{N}$, $l \in \mathbb{N}$, $i \in [n]$, $\mathcal{DB} \in \{0,1\}^{n \times l}$, la probabilité que le vecteur $X_i$ calculée par le client soit correct vaut 1. 
+\vspace{5pt}
+\textbf{Confidentialité parfaite} Chaque serveur n'a aucune information sur le vecteur que le client souhaite récupérer.

@@ -1,16 +1,8 @@
 #ifndef ___DPF_HPP___
 #define ___DPF_HPP___
 
-void key_gen(mpz_t seed_128);
-void incrementation(mpz_t init_vect);
-void decrementation(mpz_t init_vect);
-void doubleKey(const mpz_t key_128, mpz_t key_256, mpz_t init_vect);
-void inv_doubleKey(const mpz_t key_128, const mpz_t key_256, mpz_t init_vect);
-void convert(const mpz_t seed, const int g_bits, mpz_t g_seed, mpz_t init_vect);
-
-void get_tLR(const mpz_t sLR, int* tLR);
-
-void Gen(const mpz_t seed, const mpz_t alpha, const int alpha_bits, mpz_t beta, const int beta_bits, mpz_t* key_0, mpz_t* key_1);
-void Eval(const mpz_t input, const int input_bits, mpz_t output, const int output_bits, const mpz_t* key, const int b);
+mpz_class convert(const mpz_class seed, const int g_bits, mpz_class init_vect);
+void Gen(const mpz_class seed, const mpz_class alpha, const int alpha_bits, mpz_class beta, const int beta_bits, std::vector<mpz_class>& key_0, std::vector<mpz_class>& key_1);
+mpz_class Eval(const mpz_class input, const int input_bits, const int output_bits, const std::vector<mpz_class>& key, const int b);
 
 #endif

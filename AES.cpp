@@ -7,6 +7,7 @@
 # include <cstdio>
 
 # include <gmp.h>
+# include <gmpxx.h>
 # include <assert.h>
 
 # include "AES.hpp"
@@ -440,19 +441,22 @@ static const uint32_t rcon[10] =
  *
  * @return the number of rounds for the given cipher key size.
  */
-int expandEncryptKey(uint32_t *rk, const mpz_t key, int keybits)
+int expandEncryptKey(uint32_t *rk, const mpz_class key, int keybits)
 {
   int i = 0;
   uint32_t temp;
-
-  mpz_t buffer_key;
-  mpz_init(buffer_key);
-
-  mpz_set(buffer_key, key);
-  rk[3] = mpz_fdiv_q_ui(buffer_key, buffer_key, 4294967296);
-  rk[2] = mpz_fdiv_q_ui(buffer_key, buffer_key, 4294967296);
-  rk[1] = mpz_fdiv_q_ui(buffer_key, buffer_key, 4294967296);
-  rk[0] = mpz_fdiv_r_ui(buffer_key, buffer_key, 4294967296);
+  mpz_class buffer;
+  mpz_class power2_32(1); 
+  power2_32 = power2_32 << 32;  
+  
+  buffer = key % power2_32;
+  rk[0] = buffer.get_ui();
+  buffer = (key >> 32) % power2_32;
+  rk[1] = buffer.get_ui();
+  buffer = (key >> 64) % power2_32;
+  rk[2] = buffer.get_ui();
+  buffer = (key >> 96) % power2_32;
+  rk[3] = buffer.get_ui();
 
   if (keybits == 128)
   {
@@ -474,13 +478,12 @@ int expandEncryptKey(uint32_t *rk, const mpz_t key, int keybits)
     }
   }
 
-  mpz_clear(buffer_key);
   return 0;
 }
 
 // ------------------------------ AES ENCRYPTION ------------------------------
 
-void encryptAES(const uint32_t *rk, int nrounds, const mpz_t plain, mpz_t cipher)
+mpz_class encryptAES(const uint32_t *rk, const int nrounds, const mpz_class plain)
 {
   uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
   #ifndef FULL_UNROLL
@@ -491,14 +494,18 @@ void encryptAES(const uint32_t *rk, int nrounds, const mpz_t plain, mpz_t cipher
    * and add initial round key:
   */ 
 
-  mpz_t buffer;
-  mpz_init(buffer);
-
-  mpz_set(buffer, plain);
-  s3 = mpz_fdiv_q_ui(buffer, buffer, 4294967296);
-  s2 = mpz_fdiv_q_ui(buffer, buffer, 4294967296);
-  s1 = mpz_fdiv_q_ui(buffer, buffer, 4294967296);
-  s0 = mpz_fdiv_r_ui(buffer, buffer, 4294967296);
+  mpz_class buffer, cipher;
+  mpz_class power2_32(1); 
+  power2_32 = power2_32 << 32;  
+  
+  buffer = plain % power2_32;
+  s0 = buffer.get_ui();
+  buffer = (plain >> 32) % power2_32;
+  s1 = buffer.get_ui();
+  buffer = (plain >> 64) % power2_32;
+  s2 = buffer.get_ui();
+  buffer = (plain >> 96) % power2_32;
+  s3 = buffer.get_ui();
 
   #ifdef FULL_UNROLL
     /* round 1: */
@@ -612,54 +619,42 @@ void encryptAES(const uint32_t *rk, int nrounds, const mpz_t plain, mpz_t cipher
   * apply last round and
   * map cipher state to byte array block:
   */
-  mpz_set_ui(cipher, 0);
   s0 =
     (Sbox[(t0 >> 24)       ] & 0xff000000) ^
     (Sbox[(t1 >> 16) & 0xff] & 0x00ff0000) ^
     (Sbox[(t2 >>  8) & 0xff] & 0x0000ff00) ^
     (Sbox[(t3      ) & 0xff] & 0x000000ff) ^
     rk[0];
-  mpz_add_ui(cipher, cipher, s0);
-  /*
-  std::cout << std::endl;
-  std::cout << "AES " << std::endl;
-  mpz_out_str(stdout,2,cipher);
-  std::cout << std::endl;
-  std::cout << mpz_sizeinbase(cipher, 2) << " bits" << std::endl << std::endl;
-  */
-  mpz_mul_ui(cipher, cipher, 4294967296);
+  cipher = s0;
   s1 =
     (Sbox[(t1 >> 24)       ] & 0xff000000) ^
     (Sbox[(t2 >> 16) & 0xff] & 0x00ff0000) ^
     (Sbox[(t3 >>  8) & 0xff] & 0x0000ff00) ^
     (Sbox[(t0      ) & 0xff] & 0x000000ff) ^
     rk[1];
-  mpz_add_ui(cipher, cipher, s1);
-  mpz_mul_ui(cipher, cipher, 4294967296);
+  cipher = (cipher << 32) + s1;
   s2 =
     (Sbox[(t2 >> 24)       ] & 0xff000000) ^
     (Sbox[(t3 >> 16) & 0xff] & 0x00ff0000) ^
     (Sbox[(t0 >>  8) & 0xff] & 0x0000ff00) ^
     (Sbox[(t1      ) & 0xff] & 0x000000ff) ^
     rk[2];
-  mpz_add_ui(cipher, cipher, s2);
-  mpz_mul_ui(cipher, cipher, 4294967296);
+  cipher = (cipher << 32) + s2;
   s3 =
     (Sbox[(t3 >> 24)       ] & 0xff000000) ^
     (Sbox[(t0 >> 16) & 0xff] & 0x00ff0000) ^
     (Sbox[(t1 >>  8) & 0xff] & 0x0000ff00) ^
     (Sbox[(t2      ) & 0xff] & 0x000000ff) ^
     rk[3];
-  mpz_add_ui(cipher, cipher, s3);
-
-  mpz_clear(buffer);
+  cipher = (cipher << 32) + s3;
+  return cipher;
 }
 
 /*
 int main()
 {
   char inputStr[1024];
-  mpz_t key, plain, cipher;
+  mpz_class key, plain, cipher;
   int flag;
 
   mpz_init(key);
